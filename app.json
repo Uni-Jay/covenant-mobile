@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "slug": "word-of-covenant",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/Word of Covenant Logo.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#1e3a8a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.wordofcovenant.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone to record voice messages.",
+        "NSCameraUsageDescription": "This app needs access to your camera to take photos and videos.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to share images."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1e3a8a"
+      },
+      "package": "com.wordofcovenant.app",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "NOTIFICATIONS",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/Word of Covenant Logo.png"
+    },
+    "plugins": [
+      "expo-web-browser",
+      "expo-barcode-scanner",
+      "expo-audio"
+    ]
+  }
+}
