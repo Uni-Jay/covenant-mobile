@@ -8,7 +8,7 @@ export const AGORA_CONFIG = {
   // 1. Go to https://console.agora.io/
   // 2. Create a new project
   // 3. Copy the App ID here
-  appId: 'YOUR_AGORA_APP_ID',
+  appId: 'b79d51e935a34c468f4c5970a698d81c',
   
   // Channel name will be generated dynamically based on group ID
   // Token is optional for testing (enable App Certificate in production)

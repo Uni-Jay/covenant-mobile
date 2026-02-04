@@ -7,6 +7,8 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
+      "image": "./assets/images/Word of Covenant Logo.png",
+      "resizeMode": "contain",
       "backgroundColor": "#1e3a8a"
     },
     "ios": {
@@ -20,7 +22,18 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/images/Word of Covenant Logo.png",
         "backgroundColor": "#1e3a8a"
+      },
+      "splash": {
+        "image": "./assets/images/Word of Covenant Logo.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#1e3a8a",
+        "mdpi": "./assets/images/Word of Covenant Logo.png",
+        "hdpi": "./assets/images/Word of Covenant Logo.png",
+        "xhdpi": "./assets/images/Word of Covenant Logo.png",
+        "xxhdpi": "./assets/images/Word of Covenant Logo.png",
+        "xxxhdpi": "./assets/images/Word of Covenant Logo.png"
       },
       "package": "com.wordofcovenant.app",
       "permissions": [
@@ -38,7 +51,6 @@
     },
     "plugins": [
       "expo-web-browser",
-      "expo-barcode-scanner",
       "expo-audio"
     ]
   }

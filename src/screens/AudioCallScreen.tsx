@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
+import RtcEngine, { ChannelProfileType, IRtcEngine } from 'react-native-agora';
+import { AGORA_CONFIG } from '../config/agora.config';
+import { useAuth } from '../context/AuthContext';
 
 type RouteParams = {
   AudioCall: {
@@ -23,13 +26,22 @@ const AudioCallScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'AudioCall'>>();
   const { groupId, groupName } = route.params;
+  const { user } = useAuth();
   
   const [isMuted, setIsMuted] = useState(false);
-  const [isSpeaker, setIsSpeaker] = useState(false);
+  const [isSpeaker, setIsSpeaker] = useState(true);
   const [callDuration, setCallDuration] = useState(0);
   const [pulseAnim] = useState(new Animated.Value(1));
+  const [isJoined, setIsJoined] = useState(false);
+  const [participantsCount, setParticipantsCount] = useState(1);
+  const [networkQuality, setNetworkQuality] = useState<'excellent' | 'good' | 'poor' | 'bad' | 'unknown'>('unknown');
+  const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  
+  const agoraEngineRef = useRef<IRtcEngine | null>(null);
 
   useEffect(() => {
+    setupAudioSDKEngine();
+    
     // Start call timer
     const interval = setInterval(() => {
       setCallDuration(prev => prev + 1);
@@ -55,8 +67,88 @@ const AudioCallScreen = () => {
     return () => {
       clearInterval(interval);
       pulse.stop();
+      leaveCall();
     };
   }, []);
+
+  const setupAudioSDKEngine = async () => {
+    try {
+      if (!AGORA_CONFIG.appId) {
+        console.error('Agora App ID not configured');
+        Alert.alert('Setup Required', 'Please configure your Agora App ID in agora.config.ts');
+        return;
+      }
+
+      const engine = RtcEngine();
+      agoraEngineRef.current = engine;
+      
+      // Disable video for audio-only call
+      await engine.disableVideo();
+      await engine.enableAudio();
+      await engine.setEnableSpeakerphone(true);
+
+      engine.addListener('onUserJoined', (connection, uid: number) => {
+        console.log('User joined audio call:', uid);
+        setParticipantsCount(prev => prev + 1);
+        setConnectionState('connected');
+      });
+
+      engine.addListener('onUserOffline', (connection, uid: number) => {
+        console.log('User left audio call:', uid);
+        setParticipantsCount(prev => Math.max(1, prev - 1));
+      });
+
+      engine.addListener('onNetworkQuality', (connection, uid, txQuality, rxQuality) => {
+        const quality = Math.max(txQuality, rxQuality);
+        if (quality <= 2) setNetworkQuality('excellent');
+        else if (quality <= 3) setNetworkQuality('good');
+        else if (quality <= 4) setNetworkQuality('poor');
+        else setNetworkQuality('bad');
+      });
+
+      engine.addListener('onConnectionStateChanged', (connection, state, reason) => {
+        if (state === 3) setConnectionState('connected');
+        else if (state === 1) setConnectionState('connecting');
+        else setConnectionState('disconnected');
+      });
+
+      await joinChannel();
+    } catch (e) {
+      console.error('Agora audio setup error:', e);
+      Alert.alert('Error', 'Failed to initialize audio call');
+    }
+  };
+
+  const joinChannel = async () => {
+    if (!agoraEngineRef.current || !user) return;
+
+    try {
+      const channelName = `group_${groupId}`;
+      await agoraEngineRef.current.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
+      await agoraEngineRef.current.joinChannel(
+        AGORA_CONFIG.token || '',
+        channelName,
+        0,
+        {}
+      );
+      setIsJoined(true);
+    } catch (e) {
+      console.error('Join channel error:', e);
+      Alert.alert('Error', 'Failed to join audio call');
+    }
+  };
+
+  const leaveCall = async () => {
+    try {
+      if (agoraEngineRef.current) {
+        await agoraEngineRef.current.leaveChannel();
+        await agoraEngineRef.current.release();
+        agoraEngineRef.current = null;
+      }
+    } catch (e) {
+      console.error('Leave channel error:', e);
+    }
+  };
 
   const handleEndCall = () => {
     Alert.alert(
@@ -67,17 +159,26 @@ const AudioCallScreen = () => {
         {
           text: 'End Call',
           style: 'destructive',
-          onPress: () => navigation.goBack(),
+          onPress: async () => {
+            await leaveCall();
+            navigation.goBack();
+          },
         },
       ]
     );
   };
 
-  const toggleMute = () => {
+  const toggleMute = async () => {
+    if (agoraEngineRef.current) {
+      await agoraEngineRef.current.muteLocalAudioStream(!isMuted);
+    }
     setIsMuted(!isMuted);
   };
 
-  const toggleSpeaker = () => {
+  const toggleSpeaker = async () => {
+    if (agoraEngineRef.current) {
+      await agoraEngineRef.current.setEnableSpeakerphone(!isSpeaker);
+    }
     setIsSpeaker(!isSpeaker);
   };
 
@@ -116,8 +217,32 @@ const AudioCallScreen = () => {
           
           <Text style={styles.groupName}>{groupName}</Text>
           <Text style={styles.duration}>{formatDuration(callDuration)}</Text>
+          
+          {/* Status Indicators */}
+          <View style={styles.statusRow}>
+            <View style={[styles.networkBadge, styles[`network_${networkQuality}`]]}>
+              <Text style={styles.networkIcon}>
+                {networkQuality === 'excellent' ? '📶' : networkQuality === 'good' ? '📶' : networkQuality === 'poor' ? '📵' : '⚠️'}
+              </Text>
+              <Text style={styles.networkText}>{networkQuality}</Text>
+            </View>
+            
+            <View style={styles.participantBadge}>
+              <Text style={styles.participantIcon}>👥</Text>
+              <Text style={styles.participantText}>{participantsCount}</Text>
+            </View>
+          </View>
+          
+          {connectionState !== 'connected' && (
+            <View style={styles.connectionBanner}>
+              <Text style={styles.connectionText}>
+                {connectionState === 'connecting' ? '⏳ Connecting...' : '❌ Disconnected'}
+              </Text>
+            </View>
+          )}
+          
           <Text style={styles.callStatus}>
-            {isMuted ? 'Microphone muted' : 'Audio call UI preview'}
+            {isMuted ? 'Microphone muted' : isJoined ? 'Call in progress' : 'Connecting...'}
           </Text>
         </View>
 
@@ -247,8 +372,76 @@ const styles = StyleSheet.create({
   duration: {
     color: 'rgba(255,255,255,0.95)',
     fontSize: 24,
-    marginBottom: 8,
+    marginBottom: 16,
     fontWeight: '600',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  networkBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  network_excellent: {
+    backgroundColor: 'rgba(16, 185, 129, 0.9)',
+  },
+  network_good: {
+    backgroundColor: 'rgba(59, 130, 246, 0.9)',
+  },
+  network_poor: {
+    backgroundColor: 'rgba(245, 158, 11, 0.9)',
+  },
+  network_bad: {
+    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+  },
+  network_unknown: {
+    backgroundColor: 'rgba(107, 114, 128, 0.9)',
+  },
+  networkIcon: {
+    fontSize: 16,
+  },
+  networkText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  participantBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(99, 102, 241, 0.9)',
+    gap: 6,
+  },
+  participantIcon: {
+    fontSize: 16,
+  },
+  participantText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  connectionBanner: {
+    marginTop: 12,
+    marginBottom: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+  },
+  connectionText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   loadingContainer: {
     flexDirection: 'row',

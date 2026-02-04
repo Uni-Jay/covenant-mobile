@@ -12,18 +12,22 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import { useAudioRecorder, RecordingPresets, AudioModule } from 'expo-audio';
+import { useAudioRecorder, RecordingPresets } from 'expo-audio';
+// import * as MediaLibrary from 'expo-media-library';
+// import * as FileSystem from 'expo-file-system';
 import { useAuth } from '../context/AuthContext';
 import api, { chatService } from '../services/api';
 import { primaryColor, accentColor, dangerColor, colors } from '../theme/colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
-const backgroundColor = '#E8F0F2';
+const backgroundColor = '#F5F7FA';
 const textColor = colors.gray[800];
 const myMessageColor = primaryColor;
 const otherMessageColor = '#FFFFFF';
@@ -65,6 +69,9 @@ const ChatRoomScreenEnhanced = () => {
   const [isSending, setIsSending] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showGroupSettings, setShowGroupSettings] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [showMessageInfo, setShowMessageInfo] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{ uri: string; messageId: number; isOwn: boolean } | null>(null);
   
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   
@@ -87,11 +94,73 @@ const ChatRoomScreenEnhanced = () => {
     navigation.goBack();
   };
 
+  const handleSaveImage = async () => {
+    if (!previewImage) return;
+    Alert.alert('Save Feature', 'Save to gallery feature requires app rebuild. Please free up disk space and run: npx expo run:android');
+    // try {
+    //   // Request media library permissions
+    //   const { status } = await MediaLibrary.requestPermissionsAsync();
+    //   if (status !== 'granted') {
+    //     Alert.alert('Permission Required', 'Please grant media library access to save images.');
+    //     return;
+    //   }
+    //   
+    //   // Download the file
+    //   const fileUri = FileSystem.documentDirectory + 'temp_image.jpg';
+    //   const downloadResult = await FileSystem.downloadAsync(previewImage.uri, fileUri);
+
+    //   if (downloadResult.status === 200) {
+    //     // Save to media library
+    //     const asset = await MediaLibrary.createAssetAsync(downloadResult.uri);
+    //     await MediaLibrary.createAlbumAsync('Covenant Church', asset, false);
+    //     
+    //     Alert.alert('Success', 'Image saved to gallery');
+    //     setPreviewImage(null);
+    //   } else {
+    //     Alert.alert('Error', 'Failed to download image');
+    //   }
+    // } catch (error) {
+    //   console.error('Save image error:', error);
+    //   Alert.alert('Error', 'Failed to save image');
+    // }
+  };
+
+  const handleDeleteImage = async () => {
+    if (!previewImage || !previewImage.isOwn) return;
+    
+    Alert.alert(
+      'Delete Image',
+      'Are you sure you want to delete this image?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/chat/messages/${previewImage.messageId}`);
+              await loadMessages();
+              setPreviewImage(null);
+              Alert.alert('Success', 'Image deleted');
+            } catch (error) {
+              console.error('Delete image error:', error);
+              Alert.alert('Error', 'Failed to delete image');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleForwardImage = () => {
+    Alert.alert('Forward', 'Forward feature coming soon!');
+  };
+
   useEffect(() => {
     loadMessages();
     
-    // Poll for new messages every 2 seconds for real-time feel
-    const interval = setInterval(loadMessages, 2000);
+    // Poll for new messages every 5 seconds
+    const interval = setInterval(loadMessages, 5000);
     
     return () => {
       clearInterval(interval);
@@ -238,24 +307,28 @@ const ChatRoomScreenEnhanced = () => {
 
   const startRecording = async () => {
     try {
-      // Request permissions using AudioModule
-      const { status } = await AudioModule.getPermissionsAsync();
-      
-      if (status !== 'granted') {
-        const { status: newStatus } = await AudioModule.requestPermissionsAsync();
-        if (newStatus !== 'granted') {
-          Alert.alert(
-            'Permission Required', 
-            'Please grant microphone permission in your device settings to record voice messages.'
-          );
-          return;
-        }
-      }
-
+      // expo-audio handles permissions internally
+      // Just attempt to record and handle permission errors
       await audioRecorder.record();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start recording:', error);
-      Alert.alert('Error', 'Failed to start recording. Please check microphone permissions.');
+      
+      // Check if it's a permission error
+      if (error?.message?.toLowerCase().includes('permission')) {
+        Alert.alert(
+          'Microphone Permission Required',
+          'This app needs microphone access to record voice messages. Would you like to open settings?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => Linking.openSettings(),
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to start recording. Please try again.');
+      }
     }
   };
 
@@ -350,82 +423,113 @@ const ChatRoomScreenEnhanced = () => {
   };
 
   const renderMessage = ({ item }: { item: Message }) => (
-    <View
-      style={[
-        styles.messageContainer,
-        item.isOwn ? styles.ownMessage : styles.otherMessage,
-      ]}
+    <TouchableOpacity
+      onLongPress={() => {
+        if (item.isOwn) {
+          setSelectedMessage(item);
+          setShowMessageInfo(true);
+        }
+      }}
+      activeOpacity={0.7}
     >
-      {!item.isOwn && (
-        <Text style={styles.senderName}>{item.userName}</Text>
-      )}
+      <View
+        style={[
+          styles.messageContainer,
+          item.isOwn ? styles.ownMessage : styles.otherMessage,
+        ]}
+      >
+      <Text style={styles.senderName}>{item.isOwn ? 'Me' : item.userName}</Text>
       
-      {item.messageType === 'text' && (
-        <Text style={[styles.messageText, item.isOwn && styles.ownMessageText]}>
-          {item.message}
-        </Text>
-      )}
-      
-      {item.messageType === 'image' && item.fileUrl && (
-        <TouchableOpacity onPress={() => {/* Open image viewer */}}>
-          <Image 
-            source={{ 
-              uri: item.fileUrl.startsWith('http') 
-                ? item.fileUrl 
-                : `http://${Platform.OS === 'android' ? '10.0.2.2' : 'localhost'}:5000${item.fileUrl}` 
-            }} 
-            style={styles.imageMessage}
-            resizeMode="cover"
-          />
-          {item.message && (
-            <Text style={[styles.messageText, item.isOwn && styles.ownMessageText]}>
-              {item.message}
-            </Text>
-          )}
-        </TouchableOpacity>
-      )}
-      
-      {item.messageType === 'file' && (
-        <TouchableOpacity style={styles.fileMessage}>
-          <Text style={styles.fileIcon}>📄</Text>
-          <Text style={[styles.fileName, item.isOwn && styles.ownMessageText]}>
-            {item.message || 'Document'}
-          </Text>
-        </TouchableOpacity>
-      )}
-      
-      {item.messageType === 'audio' && (
-        <TouchableOpacity style={styles.audioMessage}>
-          <Text style={styles.audioIcon}>🎤</Text>
-          <Text style={[styles.fileName, item.isOwn && styles.ownMessageText]}>
-            Voice Message
-          </Text>
-        </TouchableOpacity>
-      )}
-      
-      {item.messageType === 'video' && (
-        <TouchableOpacity style={styles.fileMessage}>
-          <Text style={styles.fileIcon}>🎥</Text>
-          <Text style={[styles.fileName, item.isOwn && styles.ownMessageText]}>
-            {item.message || 'Video'}
-          </Text>
-        </TouchableOpacity>
-      )}
-      
-      <View style={styles.messageFooter}>
-        <Text style={[styles.timestamp, item.isOwn && styles.ownTimestamp]}>
-          {new Date(item.createdAt).toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          })}
-        </Text>
-        {item.isOwn && (
-          <Text style={styles.checkmark}>
-            {item.isRead ? '✓✓' : '✓'}
+      <View style={[
+        styles.messageBubble,
+        item.isOwn ? styles.ownMessageBubble : styles.otherMessageBubble,
+      ]}>
+        {item.messageType === 'text' && (
+          <Text style={[styles.messageText, item.isOwn && styles.ownMessageText]}>
+            {item.message}
           </Text>
         )}
+        
+        {item.messageType === 'image' && item.fileUrl && (
+          <TouchableOpacity 
+            onPress={() => {
+              const fullUrl = item.fileUrl!.startsWith('http') 
+                ? item.fileUrl! 
+                : `http://${Platform.OS === 'android' ? '10.0.2.2' : 'localhost'}:3000${item.fileUrl}`;
+              setPreviewImage({ 
+                uri: fullUrl, 
+                messageId: item.id, 
+                isOwn: item.isOwn 
+              });
+            }}
+            activeOpacity={0.9}
+          >
+            <Image 
+              source={{ 
+                uri: item.fileUrl.startsWith('http') 
+                  ? item.fileUrl 
+                  : `http://${Platform.OS === 'android' ? '10.0.2.2' : 'localhost'}:3000${item.fileUrl}` 
+              }} 
+              style={styles.imageMessage}
+              resizeMode="cover"
+            />
+            {item.message && (
+              <Text style={[styles.messageText, item.isOwn && styles.ownMessageText]}>
+                {item.message}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
+        
+        {item.messageType === 'file' && (
+          <TouchableOpacity style={styles.fileMessage}>
+            <View style={styles.fileIconContainer}>
+              <Text style={styles.fileIcon}>📄</Text>
+            </View>
+            <Text style={[styles.fileName, item.isOwn && styles.ownMessageText]}>
+              {item.message || 'Document'}
+            </Text>
+          </TouchableOpacity>
+        )}
+        
+        {item.messageType === 'audio' && (
+          <TouchableOpacity style={styles.audioMessage}>
+            <View style={styles.fileIconContainer}>
+              <Text style={styles.audioIcon}>🎤</Text>
+            </View>
+            <Text style={[styles.fileName, item.isOwn && styles.ownMessageText]}>
+              Voice Message
+            </Text>
+          </TouchableOpacity>
+        )}
+        
+        {item.messageType === 'video' && (
+          <TouchableOpacity style={styles.fileMessage}>
+            <View style={styles.fileIconContainer}>
+              <Text style={styles.fileIcon}>🎥</Text>
+            </View>
+            <Text style={[styles.fileName, item.isOwn && styles.ownMessageText]}>
+              {item.message || 'Video'}
+            </Text>
+          </TouchableOpacity>
+        )}
+        
+        <View style={styles.messageFooter}>
+          <Text style={[styles.timestamp, item.isOwn && styles.ownTimestamp]}>
+            {new Date(item.createdAt).toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })}
+          </Text>
+          {item.isOwn && (
+            <Text style={styles.checkmark}>
+              {item.isRead ? '✓✓' : '✓'}
+            </Text>
+          )}
+        </View>
       </View>
     </View>
+    </TouchableOpacity>
   );
 
   const renderTypingIndicator = () => {
@@ -442,42 +546,61 @@ const ChatRoomScreenEnhanced = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      {/* Custom Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={handleGoBack}
-          style={styles.headerButton}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          onPress={handleGroupInfo} 
-          style={styles.headerTitle}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.groupName}>{groupName}</Text>
-          <Text style={styles.groupSubtitle}>Tap for group info</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.headerRight}>
+      {/* Custom Header with Gradient */}
+      <LinearGradient
+        colors={[primaryColor, colors.primary[600]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
           <TouchableOpacity 
-            onPress={handleVideoCall} 
-            style={styles.callButton}
+            onPress={handleGoBack}
+            style={styles.headerButton}
             activeOpacity={0.7}
           >
-            <Text style={styles.callIcon}>📹</Text>
+            <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
+          
           <TouchableOpacity 
-            onPress={handleAudioCall}
-            style={styles.callButton}
+            onPress={handleGroupInfo} 
+            style={styles.headerTitle}
             activeOpacity={0.7}
           >
-            <Text style={styles.callIcon}>📞</Text>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerGroupName}>{groupName}</Text>
+              <Text style={styles.headerSubtitle}>Tap for group info</Text>
+            </View>
           </TouchableOpacity>
+          
+          <View style={styles.headerRight}>
+            <TouchableOpacity 
+              onPress={handleVideoCall} 
+              style={styles.callButton}
+              activeOpacity={0.7}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']}
+                style={styles.callButtonGradient}
+              >
+                <Text style={styles.callIcon}>📹</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={handleAudioCall}
+              style={styles.callButton}
+              activeOpacity={0.7}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']}
+                style={styles.callButtonGradient}
+              >
+                <Text style={styles.callIcon}>📞</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </LinearGradient>
       
       <KeyboardAvoidingView
         style={styles.container}
@@ -658,6 +781,101 @@ const ChatRoomScreenEnhanced = () => {
           </View>
         </Modal>
 
+        {/* Image Preview Modal */}
+        <Modal
+          visible={!!previewImage}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPreviewImage(null)}
+        >
+          <View style={styles.imagePreviewOverlay}>
+            <TouchableOpacity 
+              style={styles.imagePreviewClose}
+              onPress={() => setPreviewImage(null)}
+            >
+              <Text style={styles.imagePreviewCloseText}>✕</Text>
+            </TouchableOpacity>
+
+            {previewImage && (
+              <>
+                <Image
+                  source={{ uri: previewImage.uri }}
+                  style={styles.imagePreviewFull}
+                  resizeMode="contain"
+                />
+
+                <View style={styles.imagePreviewActions}>
+                  <TouchableOpacity 
+                    style={styles.imageActionButton}
+                    onPress={handleSaveImage}
+                  >
+                    <Text style={styles.imageActionIcon}>💾</Text>
+                    <Text style={styles.imageActionText}>Save</Text>
+                  </TouchableOpacity>
+
+                  {previewImage.isOwn && (
+                    <TouchableOpacity 
+                      style={[styles.imageActionButton, styles.imageActionDanger]}
+                      onPress={handleDeleteImage}
+                    >
+                      <Text style={styles.imageActionIcon}>🗑️</Text>
+                      <Text style={styles.imageActionText}>Delete</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity 
+                    style={styles.imageActionButton}
+                    onPress={handleForwardImage}
+                  >
+                    <Text style={styles.imageActionIcon}>➡️</Text>
+                    <Text style={styles.imageActionText}>Forward</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </Modal>
+
+        {/* Message Info Modal */}
+        <Modal
+          visible={showMessageInfo}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowMessageInfo(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Message Info</Text>
+                <TouchableOpacity onPress={() => setShowMessageInfo(false)} style={styles.closeButton}>
+                  <Text style={styles.closeButtonText}>×</Text>
+                </TouchableOpacity>
+              </View>
+              
+              {selectedMessage && (
+                <View style={{padding: 16}}>
+                  <Text style={{fontSize: 14, color: '#666', marginBottom: 8}}>Message:</Text>
+                  <Text style={{fontSize: 16, marginBottom: 16}}>{selectedMessage.message}</Text>
+                  
+                  <Text style={{fontSize: 14, color: '#666', marginBottom: 8}}>Sent:</Text>
+                  <Text style={{fontSize: 16, marginBottom: 16}}>
+                    {new Date(selectedMessage.createdAt).toLocaleString()}
+                  </Text>
+                  
+                  <Text style={{fontSize: 14, color: '#666', marginBottom: 8}}>Status:</Text>
+                  <Text style={{fontSize: 16, color: selectedMessage.isRead ? '#10b981' : '#f59e0b'}}>
+                    {selectedMessage.isRead ? '✓✓ Read' : '✓ Delivered'}
+                  </Text>
+                  
+                  <Text style={{fontSize: 12, color: '#999', marginTop: 16, fontStyle: 'italic'}}>
+                    Note: Individual read receipts are not yet available
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </Modal>
+
         <View style={styles.inputContainer}>
           <TouchableOpacity
             style={styles.attachButton}
@@ -698,15 +916,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: backgroundColor,
   },
+  headerGradient: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 5,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.primary[800],
-    paddingHorizontal: 12,
+    padding: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   headerButton: {
     padding: 8,
@@ -715,33 +936,40 @@ const styles = StyleSheet.create({
   backIcon: {
     fontSize: 28,
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   headerTitle: {
     flex: 1,
-    alignItems: 'center',
+  },
+  headerTitleContainer: {
     justifyContent: 'center',
-    paddingVertical: 4,
   },
-  groupName: {
+  headerGroupName: {
+    fontSize: 18,
+    fontWeight: '700',
     color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
+    marginBottom: 2,
   },
-  groupSubtitle: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 11,
-    marginTop: 2,
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   callButton: {
-    padding: 10,
-    marginLeft: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
+  },
+  callButtonGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   callIcon: {
     fontSize: 20,
@@ -751,25 +979,32 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   messageContainer: {
+    marginBottom: 16,
     maxWidth: '75%',
-    marginVertical: 6,
-    padding: 14,
-    borderRadius: 20,
-    elevation: 2,
+    paddingHorizontal: 4,
+  },
+  messageBubble: {
+    borderRadius: 18,
+    padding: 12,
+    paddingHorizontal: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 2,
+    elevation: 2,
   },
   ownMessage: {
     alignSelf: 'flex-end',
+  },
+  ownMessageBubble: {
     backgroundColor: myMessageColor,
     borderBottomRightRadius: 4,
   },
   otherMessage: {
     alignSelf: 'flex-start',
+  },
+  otherMessageBubble: {
     backgroundColor: otherMessageColor,
-    borderWidth: 0,
     borderBottomLeftRadius: 4,
   },
   senderName: {
@@ -777,6 +1012,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: accentColor,
     marginBottom: 6,
+    marginLeft: 4,
     textTransform: 'capitalize',
   },
   messageText: {
@@ -807,18 +1043,26 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.05)',
     borderRadius: 8,
   },
+  fileIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(59,130,246,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
   fileIcon: {
-    fontSize: 24,
+    fontSize: 20,
   },
   audioIcon: {
-    fontSize: 24,
-    marginRight: 8,
+    fontSize: 20,
   },
   fileName: {
     fontSize: 14,
-    marginLeft: 8,
     color: textColor,
     fontWeight: '500',
+    flex: 1,
   },
   checkmark: {
     fontSize: 14,
@@ -954,9 +1198,66 @@ const styles = StyleSheet.create({
     color: textColor,
   },
   closeButton: {
+    padding: 4,
+  },
+  closeButtonText: {
     fontSize: 28,
     color: '#666',
     fontWeight: '300',
+  },
+  imagePreviewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imagePreviewClose: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 25,
+  },
+  imagePreviewCloseText: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+  imagePreviewFull: {
+    width: '100%',
+    height: '70%',
+  },
+  imagePreviewActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 40,
+    paddingVertical: 30,
+    position: 'absolute',
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+  },
+  imageActionButton: {
+    alignItems: 'center',
+    padding: 15,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    minWidth: 80,
+  },
+  imageActionDanger: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  imageActionIcon: {
+    fontSize: 28,
+    marginBottom: 6,
+  },
+  imageActionText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
   settingItem: {
     flexDirection: 'row',

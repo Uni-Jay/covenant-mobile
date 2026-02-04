@@ -113,25 +113,21 @@ const ChatListScreen = () => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Messages</Text>
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={primaryColor} />
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <SafeAreaView style={styles.container}>
+  //       <View style={styles.header}>
+  //         <Text style={styles.headerTitle}>Messages</Text>
+  //       </View>
+  //       <View style={styles.loadingContainer}>
+  //         <ActivityIndicator size="large" color={primaryColor} />
+  //       </View>
+  //     </SafeAreaView>
+  //   );
+  // }
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
-      </View>
-
       <ScrollView 
         style={styles.chatList}
         refreshControl={
@@ -158,20 +154,20 @@ const ChatListScreen = () => {
             <View style={styles.chatInfo}>
               <View style={styles.chatHeader}>
                 <Text style={styles.chatName}>{group.name}</Text>
-                <View style={styles.rightInfo}>
-                  {group.last_message_time && (
-                    <Text style={styles.timeText}>{formatMessageTime(group.last_message_time)}</Text>
-                  )}
-                  {group.unread_count && group.unread_count > 0 && (
-                    <View style={styles.unreadBadge}>
-                      <Text style={styles.unreadText}>{group.unread_count}</Text>
-                    </View>
-                  )}
-                </View>
+                {group.last_message_time && (
+                  <Text style={styles.timeText}>{formatMessageTime(group.last_message_time)}</Text>
+                )}
               </View>
-              <Text style={styles.lastMessage} numberOfLines={1}>
-                {group.last_message || group.description || 'No messages yet'}
-              </Text>
+              <View style={styles.lastMessageRow}>
+                <Text style={styles.lastMessage} numberOfLines={1}>
+                  {group.last_message || group.description || 'No messages yet'}
+                </Text>
+                {group.unread_count && group.unread_count > 0 && (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadText}>{group.unread_count}</Text>
+                  </View>
+                )}
+              </View>
             </View>
           </TouchableOpacity>
         ))}
@@ -179,10 +175,10 @@ const ChatListScreen = () => {
         {groups.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>💬</Text>
-            <Text style={styles.emptyText}>
+            {/* <Text style={styles.emptyText}>
               No group chats available.{'\n'}
               Join a department to see group chats!
-            </Text>
+            </Text> */}
           </View>
         )}
       </ScrollView>
@@ -254,6 +250,11 @@ const styles = StyleSheet.create({
     color: '#111827',
     flex: 1,
   },
+  lastMessageRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   rightInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -266,6 +267,7 @@ const styles = StyleSheet.create({
   lastMessage: {
     fontSize: 14,
     color: '#6b7280',
+    flex: 1,
   },
   unreadBadge: {
     backgroundColor: accentColor,
