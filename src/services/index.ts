@@ -163,6 +163,7 @@ export const contactService = {
 };
 
 export { 
+  api,
   feedService, 
   chatService, 
   documentService, 

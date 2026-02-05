@@ -8,7 +8,9 @@ import {
   Alert,
   Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 
 const isSuperAdmin = (user: any) => {
@@ -36,6 +38,7 @@ const isMediaOrAdmin = (user: any) => {
 
 export default function ProfileScreen({ navigation }: any) {
   const { user, logout } = useAuth();
+  const { themeMode, setThemeMode, colors: themeColors } = useTheme();
 
   const handleLogout = () => {
     Alert.alert(
@@ -68,12 +71,17 @@ export default function ProfileScreen({ navigation }: any) {
     { icon: '⚙️', title: 'Settings', route: 'Settings', requiresAdmin: false },
     { icon: '❓', title: 'Help & Support', route: 'Support', requiresAdmin: false },
     
+    // Admin and Media Department Features
+    { icon: '✅', title: 'Approve Donations', route: 'DonationApproval', requiresAdminOrMedia: true },
+    { icon: '📊', title: 'Donation Reports', route: 'DonationReports', requiresAdminOrMedia: true },
+    { icon: '📄', title: 'Church Documents', route: 'ChurchDocuments', requiresAdminOrMedia: true },
+    { icon: '🙏', title: 'Prayer Management', route: 'PrayerManagement', requiresAdminOrMedia: true },
+    
     // Super Admin Only Features
     { icon: '📊', title: 'Dashboard', route: 'Dashboard', requiresAdmin: true },
     { icon: '🏢', title: 'Department Management', route: 'DepartmentManagement', requiresAdmin: true },
     { icon: '📅', title: 'My Events', route: 'MyEvents', requiresAdmin: true },
-    { icon: '🙏', title: 'Prayer Requests', route: 'Prayer', requiresAdmin: true },
-    { icon: '🙏', title: 'My Prayer Requests', route: 'MyPrayers', requiresAdmin: true },
+    { icon: '🙏', title: 'My Prayer Requests', route: 'MyPrayers', requiresAdmin: false },
     { icon: '📋', title: 'Attendance Report', route: 'AttendanceReport', requiresAdmin: true },
     { icon: '🔳', title: 'Generate QR Code', route: 'GenerateAttendanceQR', requiresAdmin: true },
     { icon: '✍️', title: 'Manual Attendance', route: 'ManualAttendance', requiresAdmin: true },
@@ -84,31 +92,85 @@ export default function ProfileScreen({ navigation }: any) {
     { icon: '📈', title: 'Growth Report', route: 'GrowthReport', requiresAdmin: true },
   ];
 
-  // Filter menu items based on user role
-  const menuItems = allMenuItems.filter(item => 
-    !item.requiresAdmin || isMediaOrAdmin(user)
-  );
+  // Check if user is in Media department
+  const isMediaMember = React.useMemo(() => {
+    if (!user) return false;
+    
+    // Check role
+    if (user.role && ['super_admin', 'admin', 'media_head', 'media'].includes(user.role)) {
+      return true;
+    }
+    
+    // Check departments
+    if (user.departments) {
+      const depts = Array.isArray(user.departments) ? user.departments : [];
+      return depts.some((dept: any) => {
+        const deptName = typeof dept === 'string' ? dept : dept.name || '';
+        return deptName.toLowerCase().includes('media') || deptName.toLowerCase().includes('prayer');
+      });
+    }
+    
+    return false;
+  }, [user]);
+
+  // Filter menu items based on user role and department
+  const menuItems = allMenuItems.filter(item => {
+    // Show all items without restrictions
+    if (!item.requiresAdmin && !item.requiresAdminOrMedia) return true;
+    
+    // Admin-only items
+    if (item.requiresAdmin && !item.requiresAdminOrMedia) {
+      return isMediaOrAdmin(user);
+    }
+    
+    // Admin or Media department items
+    if (item.requiresAdminOrMedia) {
+      return isMediaOrAdmin(user) || isMediaMember;
+    }
+    
+    return false;
+  });
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Profile Header */}
-      <View style={styles.header}>
+    <ScrollView style={[styles.container, { backgroundColor: themeColors.background }]}>
+      {/* Profile Header with Enhanced Gradient */}
+      <LinearGradient
+        colors={[colors.primary[500], colors.primary[700], colors.primary[900]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        {/* Decorative circles */}
+        <View style={styles.decorativeCircle1} />
+        <View style={styles.decorativeCircle2} />
+        
         <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
+          <LinearGradient
+            colors={['#FFFFFF', '#F3F4F6']}
+            style={styles.avatar}
+          >
             <Text style={styles.avatarText}>
               {user?.fullName?.charAt(0) || 'U'}
             </Text>
-          </View>
+          </LinearGradient>
+          <View style={styles.avatarRing} />
         </View>
         <Text style={styles.name}>{user?.fullName || 'User'}</Text>
         <Text style={styles.email}>{user?.email}</Text>
         {user?.gender && (
-          <Text style={styles.genderText}>
-            {user.gender === 'male' ? '👨 Brother' : '👩 Sister'}
-          </Text>
+          <View style={styles.genderBadge}>
+            <Text style={styles.genderText}>
+              {user.gender === 'male' ? '👨 Brother' : '👩 Sister'}
+            </Text>
+          </View>
         )}
         <View style={styles.roleBadge}>
-          <Text style={styles.roleText}>{user?.role?.toUpperCase()}</Text>
+          <LinearGradient
+            colors={[colors.secondary[600], colors.secondary[700]]}
+            style={styles.roleBadgeGradient}
+          >
+            <Text style={styles.roleText}>{user?.role?.toUpperCase()}</Text>
+          </LinearGradient>
         </View>
         
         {/* Departments Display */}
@@ -124,28 +186,45 @@ export default function ProfileScreen({ navigation }: any) {
             </View>
           </View>
         )}
-      </View>
+      </LinearGradient>
 
       {/* Menu Items */}
-      <View style={styles.menu}>
+      <View style={[styles.menu, { backgroundColor: themeColors.surface }]}>
         {menuItems.map((item, index) => (
           <TouchableOpacity
             key={index}
-            style={styles.menuItem}
+            style={[
+              styles.menuItem,
+              { borderBottomColor: themeColors.border },
+              index === menuItems.length - 1 && styles.lastMenuItem
+            ]}
             onPress={() => navigation.navigate(item.route)}
+            activeOpacity={0.7}
           >
             <View style={styles.menuItemLeft}>
-              <Text style={styles.menuIcon}>{item.icon}</Text>
-              <Text style={styles.menuTitle}>{item.title}</Text>
+              <View style={[styles.menuIconContainer, { backgroundColor: themeColors.primary[50] }]}>
+                <Text style={styles.menuIcon}>{item.icon}</Text>
+              </View>
+              <Text style={[styles.menuTitle, { color: themeColors.text }]}>{item.title}</Text>
             </View>
-            <Text style={styles.menuArrow}>›</Text>
+            <Text style={[styles.menuArrow, { color: themeColors.textSecondary }]}>›</Text>
           </TouchableOpacity>
         ))}
       </View>
 
       {/* Logout Button */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Logout</Text>
+      <TouchableOpacity 
+        style={styles.logoutButton} 
+        onPress={handleLogout}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={['rgba(239, 68, 68, 0.1)', 'rgba(239, 68, 68, 0.05)']}
+          style={styles.logoutGradient}
+        >
+          <Text style={styles.logoutIcon}>🚪</Text>
+          <Text style={styles.logoutText}>Logout</Text>
+        </LinearGradient>
       </TouchableOpacity>
 
       {/* App Info */}
@@ -160,65 +239,118 @@ export default function ProfileScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: colors.primary[800],
-    padding: 32,
+    paddingTop: 60,
+    paddingBottom: 40,
+    paddingHorizontal: 32,
     alignItems: 'center',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  decorativeCircle1: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    top: -100,
+    right: -50,
+  },
+  decorativeCircle2: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    bottom: -30,
+    left: -40,
   },
   avatarContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 10,
+    position: 'relative',
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: colors.white,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 4,
-    borderColor: colors.primary[200],
+    borderWidth: 5,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  avatarRing: {
+    position: 'absolute',
+    width: 136,
+    height: 136,
+    borderRadius: 68,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderStyle: 'dashed',
+    top: -8,
+    left: -8,
   },
   avatarText: {
-    fontSize: 48,
+    fontSize: 56,
     fontWeight: 'bold',
     color: colors.primary[600],
+    textShadowColor: 'rgba(0,0,0,0.08)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   name: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: colors.white,
-    marginBottom: 4,
+    marginBottom: 6,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.2)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   email: {
-    fontSize: 16,
-    color: colors.white,
-    opacity: 0.9,
-    marginBottom: 8,
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 12,
+  },
+  genderBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginBottom: 12,
   },
   genderText: {
     fontSize: 14,
     color: colors.white,
-    opacity: 0.9,
-    marginBottom: 12,
+    fontWeight: '600',
   },
   roleBadge: {
-    backgroundColor: colors.secondary[600],
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-    elevation: 2,
-    shadowColor: colors.secondary[900],
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    marginBottom: 12,
+    marginBottom: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  roleBadgeGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
   },
   roleText: {
     color: colors.white,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 'bold',
+    letterSpacing: 1,
   },
   departmentsContainer: {
     marginTop: 8,
@@ -226,10 +358,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   departmentsTitle: {
-    color: colors.white,
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   departmentsList: {
     flexDirection: 'row',
@@ -238,29 +370,28 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   departmentBadge: {
-    backgroundColor: colors.primary[600],
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   departmentText: {
     color: colors.white,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   menu: {
-    backgroundColor: colors.white,
-    marginTop: 16,
-    marginHorizontal: 16,
-    borderRadius: 12,
+    marginTop: 20,
+    marginHorizontal: 20,
+    borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.primary[100],
-    elevation: 2,
     shadowColor: colors.primary[900],
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   menuItem: {
     flexDirection: 'row',
@@ -268,37 +399,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
+  },
+  lastMenuItem: {
+    borderBottomWidth: 0,
   },
   menuItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  menuIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   menuIcon: {
-    fontSize: 24,
-    marginRight: 12,
+    fontSize: 20,
   },
   menuTitle: {
     fontSize: 16,
-    color: colors.gray[900],
+    fontWeight: '500',
+    flex: 1,
   },
   menuArrow: {
-    fontSize: 24,
-    color: colors.gray[400],
+    fontSize: 28,
+    fontWeight: '300',
   },
   logoutButton: {
-    backgroundColor: colors.white,
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
     borderWidth: 2,
     borderColor: colors.error,
+    shadowColor: colors.error,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  logoutGradient: {
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  logoutIcon: {
+    fontSize: 20,
   },
   logoutText: {
     color: colors.error,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
   },
   appInfo: {

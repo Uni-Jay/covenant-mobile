@@ -13,24 +13,21 @@ import {
   Alert,
   Modal,
   Linking,
+  AppState,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useAudioRecorder, RecordingPresets } from 'expo-audio';
+import { Video, ResizeMode } from 'expo-av';
 // import * as MediaLibrary from 'expo-media-library';
 // import * as FileSystem from 'expo-file-system';
 import { useAuth } from '../context/AuthContext';
 import api, { chatService } from '../services/api';
-import { primaryColor, accentColor, dangerColor, colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
-
-const backgroundColor = '#F5F7FA';
-const textColor = colors.gray[800];
-const myMessageColor = primaryColor;
-const otherMessageColor = '#FFFFFF';
 
 type RouteParams = {
   ChatRoom: {
@@ -61,6 +58,7 @@ const ChatRoomScreenEnhanced = () => {
   const navigation = useNavigation();
   const { groupId, groupName } = route.params;
   const { user } = useAuth();
+  const { colors, theme } = useTheme();
   
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -138,13 +136,20 @@ const ChatRoomScreenEnhanced = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.delete(`/chat/messages/${previewImage.messageId}`);
-              await loadMessages();
+              // Optimistically remove from local state
+              setMessages(prev => prev.filter(msg => msg.id !== previewImage.messageId));
               setPreviewImage(null);
-              Alert.alert('Success', 'Image deleted');
+              
+              // Delete from server in background
+              await api.delete(`/chat/messages/${previewImage.messageId}`);
+              
+              // Reload to sync with server
+              loadMessages();
             } catch (error) {
               console.error('Delete image error:', error);
               Alert.alert('Error', 'Failed to delete image');
+              // Reload to restore message if delete failed
+              loadMessages();
             }
           },
         },
@@ -159,13 +164,34 @@ const ChatRoomScreenEnhanced = () => {
   useEffect(() => {
     loadMessages();
     
-    // Poll for new messages every 5 seconds
-    const interval = setInterval(loadMessages, 5000);
+    // Mark as read immediately when screen loads
+    markMessagesAsRead();
+    
+    // Poll for new messages every 2 seconds for faster updates
+    const interval = setInterval(loadMessages, 2000);
     
     return () => {
       clearInterval(interval);
     };
   }, [groupId, user]);
+
+  // Mark messages as read when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      markMessagesAsRead();
+      
+      // Set up app state listener to mark as read when app comes to foreground
+      const subscription = AppState.addEventListener('change', (nextAppState) => {
+        if (nextAppState === 'active') {
+          markMessagesAsRead();
+        }
+      });
+
+      return () => {
+        subscription.remove();
+      };
+    }, [groupId])
+  );
 
   const loadMessages = async () => {
     try {
@@ -189,9 +215,6 @@ const ChatRoomScreenEnhanced = () => {
       console.log('[ChatRoom] Sample message:', fetchedMessages[0]);
       setMessages(fetchedMessages);
       console.log('[ChatRoom] Messages state updated');
-      
-      // Mark messages as read
-      markMessagesAsRead();
     } catch (error) {
       console.error('Load messages error:', error);
     } finally {
@@ -202,6 +225,12 @@ const ChatRoomScreenEnhanced = () => {
   const markMessagesAsRead = async () => {
     try {
       await api.put(`/chat/groups/${groupId}/messages/read`);
+      // Immediately update local state to show messages as read
+      setMessages(prevMessages => 
+        prevMessages.map(msg => 
+          !msg.isOwn ? { ...msg, isRead: true } : msg
+        )
+      );
     } catch (error) {
       console.error('Mark read error:', error);
     }
@@ -229,9 +258,27 @@ const ChatRoomScreenEnhanced = () => {
         messageType: 'text',
       });
       
-      // Reload messages to get the new one
-      await loadMessages();
-      flatListRef.current?.scrollToEnd({ animated: true });
+      // Immediately add the new message to local state for instant feedback
+      const newMessage = {
+        id: response.data.message.id,
+        userId: user?.id || 0,
+        userName: `${user?.firstName} ${user?.lastName}`,
+        message: messageText,
+        messageType: 'text' as const,
+        fileUrl: undefined,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        isOwn: true,
+      };
+      setMessages(prev => [...prev, newMessage]);
+      
+      // Scroll to end
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+      
+      // Reload in background to sync with server
+      loadMessages();
     } catch (error) {
       console.error('Send message error:', error);
       Alert.alert('Error', 'Failed to send message');
@@ -261,6 +308,30 @@ const ChatRoomScreenEnhanced = () => {
     } catch (error) {
       console.error('Pick image error:', error);
       Alert.alert('Error', 'Failed to pick image');
+    }
+    setShowAttachMenu(false);
+  };
+
+  const pickVideo = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant camera roll permissions');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: true,
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadMedia(result.assets[0].uri, 'video');
+      }
+    } catch (error) {
+      console.error('Pick video error:', error);
+      Alert.alert('Error', 'Failed to pick video');
     }
     setShowAttachMenu(false);
   };
@@ -386,7 +457,7 @@ const ChatRoomScreenEnhanced = () => {
     );
   };
 
-  const uploadMedia = async (uri: string, type: 'image' | 'file' | 'audio', fileName?: string) => {
+  const uploadMedia = async (uri: string, type: 'image' | 'file' | 'audio' | 'video', fileName?: string) => {
     setIsSending(true);
     try {
       const formData = new FormData();
@@ -399,6 +470,9 @@ const ChatRoomScreenEnhanced = () => {
       } else if (type === 'audio') {
         fileType = 'audio/m4a';
         name = fileName || `voice_${Date.now()}.m4a`;
+      } else if (type === 'video') {
+        fileType = 'video/mp4';
+        name = `${Date.now()}.mp4`;
       }
 
       formData.append('file', {
@@ -438,14 +512,19 @@ const ChatRoomScreenEnhanced = () => {
           item.isOwn ? styles.ownMessage : styles.otherMessage,
         ]}
       >
-      <Text style={styles.senderName}>{item.isOwn ? 'Me' : item.userName}</Text>
+      <Text style={[styles.senderName, { color: colors.textSecondary }]}>
+        {item.isOwn ? 'Me' : item.userName}
+      </Text>
       
       <View style={[
         styles.messageBubble,
-        item.isOwn ? styles.ownMessageBubble : styles.otherMessageBubble,
+        item.isOwn ? { backgroundColor: colors.primary[600] } : { backgroundColor: colors.surface },
       ]}>
         {item.messageType === 'text' && (
-          <Text style={[styles.messageText, item.isOwn && styles.ownMessageText]}>
+          <Text style={[
+            styles.messageText, 
+            { color: item.isOwn ? '#FFFFFF' : colors.text }
+          ]}>
             {item.message}
           </Text>
         )}
@@ -474,7 +553,10 @@ const ChatRoomScreenEnhanced = () => {
               resizeMode="cover"
             />
             {item.message && (
-              <Text style={[styles.messageText, item.isOwn && styles.ownMessageText]}>
+              <Text style={[
+                styles.messageText, 
+                { color: item.isOwn ? '#FFFFFF' : colors.text }
+              ]}>
                 {item.message}
               </Text>
             )}
@@ -486,7 +568,10 @@ const ChatRoomScreenEnhanced = () => {
             <View style={styles.fileIconContainer}>
               <Text style={styles.fileIcon}>📄</Text>
             </View>
-            <Text style={[styles.fileName, item.isOwn && styles.ownMessageText]}>
+            <Text style={[
+              styles.fileName, 
+              { color: item.isOwn ? '#FFFFFF' : colors.text }
+            ]}>
               {item.message || 'Document'}
             </Text>
           </TouchableOpacity>
@@ -497,25 +582,44 @@ const ChatRoomScreenEnhanced = () => {
             <View style={styles.fileIconContainer}>
               <Text style={styles.audioIcon}>🎤</Text>
             </View>
-            <Text style={[styles.fileName, item.isOwn && styles.ownMessageText]}>
+            <Text style={[
+              styles.fileName, 
+              { color: item.isOwn ? '#FFFFFF' : colors.text }
+            ]}>
               Voice Message
             </Text>
           </TouchableOpacity>
         )}
         
-        {item.messageType === 'video' && (
-          <TouchableOpacity style={styles.fileMessage}>
-            <View style={styles.fileIconContainer}>
-              <Text style={styles.fileIcon}>🎥</Text>
-            </View>
-            <Text style={[styles.fileName, item.isOwn && styles.ownMessageText]}>
-              {item.message || 'Video'}
-            </Text>
-          </TouchableOpacity>
+        {item.messageType === 'video' && item.fileUrl && (
+          <View>
+            <Video
+              source={{ 
+                uri: item.fileUrl.startsWith('http') 
+                  ? item.fileUrl 
+                  : `http://${Platform.OS === 'android' ? '10.0.2.2' : 'localhost'}:3000${item.fileUrl}` 
+              }}
+              style={styles.videoMessage}
+              useNativeControls
+              resizeMode={ResizeMode.CONTAIN}
+              isLooping={false}
+            />
+            {item.message && (
+              <Text style={[
+                styles.messageText, 
+                { color: item.isOwn ? '#FFFFFF' : colors.text }
+              ]}>
+                {item.message}
+              </Text>
+            )}
+          </View>
         )}
         
         <View style={styles.messageFooter}>
-          <Text style={[styles.timestamp, item.isOwn && styles.ownTimestamp]}>
+          <Text style={[
+            styles.timestamp, 
+            { color: item.isOwn ? 'rgba(255,255,255,0.7)' : colors.textSecondary }
+          ]}>
             {new Date(item.createdAt).toLocaleTimeString('en-US', { 
               hour: '2-digit', 
               minute: '2-digit' 
@@ -545,10 +649,10 @@ const ChatRoomScreenEnhanced = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {/* Custom Header with Gradient */}
       <LinearGradient
-        colors={[primaryColor, colors.primary[600]]}
+        colors={[colors.primary[600], colors.primary[700]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.headerGradient}
@@ -609,8 +713,8 @@ const ChatRoomScreenEnhanced = () => {
       >
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={primaryColor} />
-            <Text style={styles.loadingText}>Loading messages...</Text>
+            <ActivityIndicator size="large" color={colors.primary[600]} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading messages...</Text>
           </View>
         ) : messages.length === 0 ? (
           <View style={styles.emptyContainer}>
@@ -639,6 +743,10 @@ const ChatRoomScreenEnhanced = () => {
             <TouchableOpacity style={styles.attachOption} onPress={pickImage}>
               <Text style={styles.attachIcon}>🖼️</Text>
               <Text style={styles.attachText}>Gallery</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.attachOption} onPress={pickVideo}>
+              <Text style={styles.attachIcon}>🎥</Text>
+              <Text style={styles.attachText}>Video</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.attachOption} onPress={pickDocument}>
               <Text style={styles.attachIcon}>📄</Text>
@@ -876,18 +984,18 @@ const ChatRoomScreenEnhanced = () => {
           </View>
         </Modal>
 
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
           <TouchableOpacity
-            style={styles.attachButton}
+            style={[styles.attachButton, { backgroundColor: colors.primary[50] }]}
             onPress={() => setShowAttachMenu(!showAttachMenu)}
           >
-            <Text style={styles.attachButtonText}>➕</Text>
+            <Text style={[styles.attachButtonText, { color: colors.primary[600] }]}>➕</Text>
           </TouchableOpacity>
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
             placeholder="Type a message..."
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textSecondary}
             value={message}
             onChangeText={handleTyping}
             multiline
@@ -895,15 +1003,26 @@ const ChatRoomScreenEnhanced = () => {
           />
 
           <TouchableOpacity
-            style={[styles.sendButton, (!message.trim() || isSending) && styles.sendButtonDisabled]}
+            style={[
+              styles.sendButton, 
+              (!message.trim() || isSending) && styles.sendButtonDisabled
+            ]}
             onPress={handleSend}
             disabled={!message.trim() || isSending}
           >
-            {isSending ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.sendButtonText}>➤</Text>
-            )}
+            <LinearGradient
+              colors={(!message.trim() || isSending) 
+                ? [colors.gray[400], colors.gray[500]]
+                : [colors.primary[500], colors.primary[600]]
+              }
+              style={styles.sendButtonGradient}
+            >
+              {isSending ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.sendButtonText}>➤</Text>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -914,20 +1033,19 @@ const ChatRoomScreenEnhanced = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: backgroundColor,
   },
   headerGradient: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 5,
+    shadowRadius: 6,
+    elevation: 8,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   headerButton: {
     padding: 8,
@@ -945,34 +1063,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerGroupName: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 19,
+    fontWeight: '800',
     color: '#fff',
     marginBottom: 2,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.85)',
     fontWeight: '500',
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   callButton: {
-    borderRadius: 20,
+    borderRadius: 22,
     overflow: 'hidden',
   },
   callButtonGradient: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
   callIcon: {
-    fontSize: 20,
+    fontSize: 22,
   },
   messagesList: {
     padding: 16,
@@ -984,84 +1102,77 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   messageBubble: {
-    borderRadius: 18,
-    padding: 12,
-    paddingHorizontal: 16,
+    borderRadius: 20,
+    padding: 14,
+    paddingHorizontal: 18,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   ownMessage: {
     alignSelf: 'flex-end',
   },
-  ownMessageBubble: {
-    backgroundColor: myMessageColor,
-    borderBottomRightRadius: 4,
-  },
   otherMessage: {
     alignSelf: 'flex-start',
-  },
-  otherMessageBubble: {
-    backgroundColor: otherMessageColor,
-    borderBottomLeftRadius: 4,
   },
   senderName: {
     fontSize: 13,
     fontWeight: '700',
-    color: accentColor,
     marginBottom: 6,
     marginLeft: 4,
     textTransform: 'capitalize',
   },
   messageText: {
     fontSize: 16,
-    color: textColor,
     lineHeight: 22,
   },
-  ownMessageText: {
-    color: '#fff',
-  },
   imageMessage: {
-    width: 220,
-    height: 220,
-    borderRadius: 12,
+    width: 240,
+    height: 240,
+    borderRadius: 16,
     marginBottom: 8,
+  },
+  videoMessage: {
+    width: 280,
+    height: 200,
+    borderRadius: 16,
+    marginBottom: 8,
+    backgroundColor: '#000',
   },
   fileMessage: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
     backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 8,
+    borderRadius: 10,
   },
   audioMessage: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
     backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 8,
+    borderRadius: 10,
   },
   fileIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(59,130,246,0.1)',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(59,130,246,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: 10,
   },
   fileIcon: {
-    fontSize: 20,
+    fontSize: 22,
   },
   audioIcon: {
-    fontSize: 20,
+    fontSize: 22,
   },
   fileName: {
-    fontSize: 14,
-    color: textColor,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
     flex: 1,
   },
   checkmark: {
@@ -1077,11 +1188,7 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 11,
-    color: '#999',
     fontWeight: '500',
-  },
-  ownTimestamp: {
-    color: 'rgba(255,255,255,0.8)',
   },
   typingContainer: {
     padding: 12,
@@ -1089,62 +1196,62 @@ const styles = StyleSheet.create({
   },
   typingText: {
     fontSize: 13,
-    color: '#666',
     fontStyle: 'italic',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: 14,
-    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    elevation: 8,
+    elevation: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
   },
   attachButton: {
     padding: 10,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 4,
   },
   attachButtonText: {
     fontSize: 26,
-    color: primaryColor,
   },
   input: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 24,
-    paddingHorizontal: 18,
+    borderRadius: 26,
+    paddingHorizontal: 20,
     paddingVertical: 12,
     maxHeight: 100,
-    marginHorizontal: 10,
+    marginHorizontal: 8,
     fontSize: 16,
-    color: textColor,
   },
   sendButton: {
-    backgroundColor: primaryColor,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: primaryColor,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
   },
+  sendButtonGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
+  },
   sendButtonText: {
-    fontSize: 22,
+    fontSize: 24,
     color: '#fff',
     fontWeight: 'bold',
   },
   sendButtonDisabled: {
-    backgroundColor: '#ccc',
     elevation: 0,
     shadowOpacity: 0,
   },
@@ -1168,7 +1275,6 @@ const styles = StyleSheet.create({
   },
   attachText: {
     fontSize: 12,
-    color: textColor,
     marginTop: 4,
     fontWeight: '600',
   },
@@ -1195,7 +1301,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: textColor,
   },
   closeButton: {
     padding: 4,
@@ -1272,14 +1377,13 @@ const styles = StyleSheet.create({
   },
   settingText: {
     fontSize: 16,
-    color: textColor,
     fontWeight: '500',
   },
   dangerItem: {
     backgroundColor: '#fff5f5',
   },
   dangerText: {
-    color: dangerColor,
+    color: '#EF4444',
   },
   loadingContainer: {
     flex: 1,
@@ -1305,7 +1409,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: textColor,
     marginBottom: 8,
   },
   emptySubtext: {

@@ -15,7 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { chatService } from '../services/api';
-import { primaryColor, accentColor } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 type RootStackParamList = {
   ChatRoom: { department: string };
@@ -39,6 +39,7 @@ interface GroupChat {
 const ChatListScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuth();
+  const { colors, theme } = useTheme();
   const [groups, setGroups] = useState<GroupChat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -75,10 +76,13 @@ const ChatListScreen = () => {
       'Drama': '🎭',
       'Media': '📹',
       'Ushering': '👋',
+      'Usher': '👋',
       'Protocol': '🎖️',
       'Children': '👶',
       'Youth': '🧑',
       'Prayer': '🙏',
+      'Prayer Team': '🙏',
+      'Evangelism': '📢',
       'Welfare': '🤝',
       'Ministers': '⛪',
     };
@@ -127,58 +131,76 @@ const ChatListScreen = () => {
   // }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
       <ScrollView 
         style={styles.chatList}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={isRefreshing} 
+            onRefresh={onRefresh}
+            tintColor={colors.primary[600]}
+          />
         }
       >
         {groups.map((group) => (
           <TouchableOpacity
             key={group.id}
-            style={styles.chatItem}
+            style={[styles.chatItem, { backgroundColor: colors.surface }]}
             onPress={() => handleChatPress(group)}
+            activeOpacity={0.7}
           >
-            <View style={styles.iconContainer}>
+            <View style={[styles.iconContainer, { backgroundColor: colors.primary[50] }]}>
               {group.photo && getImageUrl(group.photo) ? (
                 <Image
                   source={{ uri: getImageUrl(group.photo) }}
                   style={styles.groupImage}
                 />
               ) : (
-                <Text style={styles.icon}>{getDepartmentIcon(group.department || group.type)}</Text>
+                <Text style={styles.icon}>
+                  {getDepartmentIcon(group.department || group.type || '')}
+                </Text>
               )}
             </View>
             
             <View style={styles.chatInfo}>
               <View style={styles.chatHeader}>
-                <Text style={styles.chatName}>{group.name}</Text>
+                <Text style={[styles.chatName, { color: colors.text }]}>{group.name}</Text>
                 {group.last_message_time && (
-                  <Text style={styles.timeText}>{formatMessageTime(group.last_message_time)}</Text>
+                  <Text style={[styles.timeText, { color: colors.textSecondary }]}>
+                    {formatMessageTime(group.last_message_time)}
+                  </Text>
                 )}
               </View>
               <View style={styles.lastMessageRow}>
-                <Text style={styles.lastMessage} numberOfLines={1}>
+                <Text style={[styles.lastMessage, { color: colors.textSecondary }]} numberOfLines={1}>
                   {group.last_message || group.description || 'No messages yet'}
                 </Text>
-                {group.unread_count && group.unread_count > 0 && (
-                  <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadText}>{group.unread_count}</Text>
-                  </View>
-                )}
+                <View style={styles.checkmarkContainer}>
+                  <Text style={[
+                    styles.checkmark,
+                    { color: group.unread_count && group.unread_count > 0 ? colors.textSecondary : colors.primary[600] }
+                  ]}>
+                    {group.unread_count && group.unread_count > 0 ? '✓' : '✓✓'}
+                  </Text>
+                </View>
               </View>
             </View>
           </TouchableOpacity>
         ))}
 
-        {groups.length === 0 && (
+        {groups.length === 0 && !isLoading && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>💬</Text>
-            {/* <Text style={styles.emptyText}>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               No group chats available.{'\n'}
               Join a department to see group chats!
-            </Text> */}
+            </Text>
+          </View>
+        )}
+
+        {isLoading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary[600]} />
           </View>
         )}
       </ScrollView>
@@ -189,23 +211,12 @@ const ChatListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  header: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    backgroundColor: primaryColor,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+    paddingVertical: 40,
   },
   chatList: {
     flex: 1,
@@ -213,27 +224,32 @@ const styles = StyleSheet.create({
   chatItem: {
     flexDirection: 'row',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    marginHorizontal: 12,
+    marginVertical: 6,
+    borderRadius: 16,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   iconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#e0e7ff',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
     overflow: 'hidden',
   },
   groupImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   icon: {
-    fontSize: 24,
+    fontSize: 28,
   },
   chatInfo: {
     flex: 1,
@@ -242,59 +258,48 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   chatName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+    fontSize: 17,
+    fontWeight: '700',
     flex: 1,
+    marginRight: 8,
   },
   lastMessageRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  rightInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 8,
   },
   timeText: {
-    fontSize: 12,
-    color: '#9ca3af',
+    fontSize: 13,
+    fontWeight: '500',
   },
   lastMessage: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: 15,
     flex: 1,
   },
-  unreadBadge: {
-    backgroundColor: accentColor,
-    borderRadius: 12,
-    minWidth: 20,
-    height: 20,
+  checkmarkContainer: {
+    marginLeft: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 6,
   },
-  unreadText: {
-    color: '#fff',
-    fontSize: 12,
+  checkmark: {
+    fontSize: 16,
     fontWeight: 'bold',
   },
   emptyState: {
-    padding: 40,
+    padding: 60,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
+    fontSize: 72,
+    marginBottom: 20,
   },
   emptyText: {
     fontSize: 16,
-    color: '#6b7280',
     textAlign: 'center',
     lineHeight: 24,
   },

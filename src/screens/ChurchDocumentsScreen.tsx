@@ -41,9 +41,30 @@ const ChurchDocumentsScreen = () => {
   const [selectedTab, setSelectedTab] = useState<'documents' | 'letterheads'>('documents');
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
+  // Check if user is admin or media department
+  const isAdminOrMedia = React.useMemo(() => {
+    if (!user) return false;
+    
+    // Check role
+    if (user.role && ['super_admin', 'admin', 'media_head', 'media'].includes(user.role)) {
+      return true;
+    }
+    
+    // Check departments
+    if (user.departments) {
+      const depts = Array.isArray(user.departments) ? user.departments : [];
+      return depts.some((dept: any) => {
+        const deptName = typeof dept === 'string' ? dept : dept.name || '';
+        return deptName.toLowerCase().includes('media');
+      });
+    }
+    
+    return false;
+  }, [user]);
+
   const isExecutive = user?.role && [
-    'super_admin', 'pastor', 'elder', 'secretary', 
-    'media_head', 'department_head', 'finance', 'deacon'
+    'super_admin', 'admin', 'pastor', 'elder', 'secretary', 
+    'media_head', 'media', 'department_head', 'finance', 'deacon'
   ].includes(user.role);
 
   useEffect(() => {
@@ -180,6 +201,21 @@ const ChurchDocumentsScreen = () => {
     </View>
   );
 
+  // Access control check
+  if (!isAdminOrMedia) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.accessDenied}>
+          <Text style={styles.accessDeniedIcon}>🔒</Text>
+          <Text style={styles.accessDeniedTitle}>Access Restricted</Text>
+          <Text style={styles.accessDeniedText}>
+            This section is only available to administrators and media department members.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -274,6 +310,28 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: textColor,
+  },
+  accessDenied: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  accessDeniedIcon: {
+    fontSize: 80,
+    marginBottom: 20,
+  },
+  accessDeniedTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.gray[900],
+    marginBottom: 12,
+  },
+  accessDeniedText: {
+    fontSize: 16,
+    color: colors.gray[600],
+    textAlign: 'center',
+    lineHeight: 24,
   },
   header: {
     padding: 20,

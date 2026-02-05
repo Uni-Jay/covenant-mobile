@@ -23,6 +23,9 @@ import GroupMembersScreen from '../screens/GroupMembersScreen';
 import ChurchDocumentsScreen from '../screens/ChurchDocumentsScreen';
 import PrayerScreen from '../screens/PrayerScreen';
 import GiveScreen from '../screens/GiveScreen';
+import DonationApprovalScreen from '../screens/DonationApprovalScreen';
+import DonationReportsScreen from '../screens/DonationReportsScreen';
+import PrayerManagementScreen from '../screens/PrayerManagementScreen';
 import LiveStreamScreen from '../screens/LiveStreamScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import VideoCallScreen from '../screens/VideoCallScreen';
@@ -167,6 +170,9 @@ function MainStack() {
       <Stack.Screen name="Events" component={EventsScreen} options={{ title: 'Events' }} />
       <Stack.Screen name="Prayer" component={PrayerScreen} options={{ title: 'Prayer Request' }} />
       <Stack.Screen name="Give" component={GiveScreen} options={{ title: 'Give' }} />
+      <Stack.Screen name="DonationApproval" component={DonationApprovalScreen} options={{ title: 'Approve Donations' }} />
+      <Stack.Screen name="DonationReports" component={DonationReportsScreen} options={{ title: 'Donation Reports' }} />
+      <Stack.Screen name="PrayerManagement" component={PrayerManagementScreen} options={{ title: 'Prayer Management' }} />
       <Stack.Screen name="LiveStream" component={LiveStreamScreen} options={{ title: 'Live Stream' }} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit Profile' }} />

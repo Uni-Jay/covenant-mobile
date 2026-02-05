@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,97 @@ import {
   Switch,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import api from '../services/api';
 
 export default function SettingsScreen({ navigation }: any) {
+  const { themeMode, setThemeMode, colors: themeColors } = useTheme();
   const [notifications, setNotifications] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load notification preferences on mount
+  useEffect(() => {
+    loadNotificationPreferences();
+  }, []);
+
+  const loadNotificationPreferences = async () => {
+    try {
+      // First try to load from backend
+      const response = await api.get('/auth/notification-preferences');
+      if (response.data?.preferences) {
+        const { pushNotifications: push, emailUpdates: email, eventReminders: event } = response.data.preferences;
+        setPushNotifications(push);
+        setEmailUpdates(email);
+        setNotifications(event);
+        
+        // Save to AsyncStorage
+        await AsyncStorage.setItem('pushNotifications', push.toString());
+        await AsyncStorage.setItem('emailUpdates', email.toString());
+        await AsyncStorage.setItem('eventReminders', event.toString());
+        return;
+      }
+    } catch (error) {
+      console.log('Failed to load from backend, loading from AsyncStorage');
+    }
+
+    // Fallback to AsyncStorage
+    try {
+      const [pushPref, emailPref, eventPref] = await Promise.all([
+        AsyncStorage.getItem('pushNotifications'),
+        AsyncStorage.getItem('emailUpdates'),
+        AsyncStorage.getItem('eventReminders')
+      ]);
+      
+      if (pushPref !== null) setPushNotifications(pushPref === 'true');
+      if (emailPref !== null) setEmailUpdates(emailPref === 'true');
+      if (eventPref !== null) setNotifications(eventPref === 'true');
+    } catch (error) {
+      console.error('Failed to load notification preferences:', error);
+    }
+  };
+
+  const updateNotificationPreference = async (
+    type: 'push' | 'email' | 'event',
+    value: boolean
+  ) => {
+    setIsLoading(true);
+    try {
+      // Save to AsyncStorage first (works offline)
+      const storageKey = type === 'push' ? 'pushNotifications' : 
+                         type === 'email' ? 'emailUpdates' : 'eventReminders';
+      await AsyncStorage.setItem(storageKey, value.toString());
+
+      // Try to send to backend API
+      try {
+        await api.put('/auth/notification-preferences', {
+          pushNotifications: type === 'push' ? value : pushNotifications,
+          emailUpdates: type === 'email' ? value : emailUpdates,
+          eventReminders: type === 'event' ? value : notifications,
+        });
+        console.log(`${type} notifications ${value ? 'enabled' : 'disabled'}`);
+      } catch (apiError: any) {
+        console.log('API update failed, preference saved locally only:', apiError?.message || apiError);
+      }
+    } catch (error) {
+      console.error('Failed to update notification preference:', error);
+      Alert.alert(
+        'Error',
+        'Failed to update notification preferences. Please try again.',
+        [{ text: 'OK' }]
+      );
+      // Revert the change on error
+      if (type === 'push') setPushNotifications(!value);
+      if (type === 'email') setEmailUpdates(!value);
+      if (type === 'event') setNotifications(!value);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleClearCache = () => {
     Alert.alert(
@@ -33,64 +118,149 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Notifications</Text>
+    <ScrollView style={[styles.container, { backgroundColor: themeColors.background }]}>
+      {/* Appearance Section */}
+      <View style={[styles.section, { backgroundColor: themeColors.surface }]}>
+        <Text style={[styles.sectionTitle, { color: themeColors.text }]}>🎨 Appearance</Text>
         
-        <View style={styles.settingItem}>
+        <View style={styles.themeContainer}>
+          <TouchableOpacity
+            style={[
+              styles.themeButton,
+              { borderColor: themeColors.border },
+              themeMode === 'light' && { 
+                backgroundColor: themeColors.primary[100],
+                borderColor: themeColors.primary[600],
+                borderWidth: 2,
+              }
+            ]}
+            onPress={() => setThemeMode('light')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.themeBtnIcon}>☀️</Text>
+            <Text style={[
+              styles.themeBtnText,
+              { color: themeColors.text },
+              themeMode === 'light' && { color: themeColors.primary[600], fontWeight: '700' }
+            ]}>Light</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.themeButton,
+              { borderColor: themeColors.border },
+              themeMode === 'dark' && { 
+                backgroundColor: themeColors.primary[100],
+                borderColor: themeColors.primary[600],
+                borderWidth: 2,
+              }
+            ]}
+            onPress={() => setThemeMode('dark')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.themeBtnIcon}>🌙</Text>
+            <Text style={[
+              styles.themeBtnText,
+              { color: themeColors.text },
+              themeMode === 'dark' && { color: themeColors.primary[600], fontWeight: '700' }
+            ]}>Dark</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.themeButton,
+              { borderColor: themeColors.border },
+              themeMode === 'auto' && { 
+                backgroundColor: themeColors.primary[100],
+                borderColor: themeColors.primary[600],
+                borderWidth: 2,
+              }
+            ]}
+            onPress={() => setThemeMode('auto')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.themeBtnIcon}>⚙️</Text>
+            <Text style={[
+              styles.themeBtnText,
+              { color: themeColors.text },
+              themeMode === 'auto' && { color: themeColors.primary[600], fontWeight: '700' }
+            ]}>Auto</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={[styles.themeHint, { color: themeColors.textSecondary }]}>
+          {themeMode === 'auto' ? 'Following system settings' : `Using ${themeMode} mode`}
+        </Text>
+      </View>
+
+      <View style={[styles.section, { backgroundColor: themeColors.surface }]}>
+        <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Notifications</Text>
+        
+        <View style={[styles.settingItem, { borderBottomColor: themeColors.border }]}>
           <View style={styles.settingLeft}>
             <Text style={styles.settingIcon}>🔔</Text>
             <View>
-              <Text style={styles.settingTitle}>Push Notifications</Text>
-              <Text style={styles.settingDescription}>Receive push notifications</Text>
+              <Text style={[styles.settingTitle, { color: themeColors.text }]}>Push Notifications</Text>
+              <Text style={[styles.settingDescription, { color: themeColors.textSecondary }]}>Receive push notifications</Text>
             </View>
           </View>
           <Switch
             value={pushNotifications}
-            onValueChange={setPushNotifications}
-            trackColor={{ false: colors.gray[300], true: colors.primary[600] }}
-            thumbColor={pushNotifications ? colors.white : colors.gray[100]}
+            onValueChange={(value) => {
+              setPushNotifications(value);
+              updateNotificationPreference('push', value);
+            }}
+            disabled={isLoading}
+            trackColor={{ false: themeColors.gray[300], true: themeColors.primary[600] }}
+            thumbColor={pushNotifications ? themeColors.white : themeColors.gray[100]}
           />
         </View>
 
-        <View style={styles.settingItem}>
+        <View style={[styles.settingItem, { borderBottomColor: themeColors.border }]}>
           <View style={styles.settingLeft}>
             <Text style={styles.settingIcon}>📧</Text>
             <View>
-              <Text style={styles.settingTitle}>Email Updates</Text>
-              <Text style={styles.settingDescription}>Receive email notifications</Text>
+              <Text style={[styles.settingTitle, { color: themeColors.text }]}>Email Updates</Text>
+              <Text style={[styles.settingDescription, { color: themeColors.textSecondary }]}>Receive email notifications</Text>
             </View>
           </View>
           <Switch
             value={emailUpdates}
-            onValueChange={setEmailUpdates}
-            trackColor={{ false: colors.gray[300], true: colors.primary[600] }}
-            thumbColor={emailUpdates ? colors.white : colors.gray[100]}
+            onValueChange={(value) => {
+              setEmailUpdates(value);
+              updateNotificationPreference('email', value);
+            }}
+            disabled={isLoading}
+            trackColor={{ false: themeColors.gray[300], true: themeColors.primary[600] }}
+            thumbColor={emailUpdates ? themeColors.white : themeColors.gray[100]}
           />
         </View>
 
-        <View style={styles.settingItem}>
+        <View style={[styles.settingItem, { borderBottomColor: themeColors.border }]}>
           <View style={styles.settingLeft}>
             <Text style={styles.settingIcon}>📱</Text>
             <View>
-              <Text style={styles.settingTitle}>Event Reminders</Text>
-              <Text style={styles.settingDescription}>Get reminded about events</Text>
+              <Text style={[styles.settingTitle, { color: themeColors.text }]}>Event Reminders</Text>
+              <Text style={[styles.settingDescription, { color: themeColors.textSecondary }]}>Get reminded about events</Text>
             </View>
           </View>
           <Switch
             value={notifications}
-            onValueChange={setNotifications}
-            trackColor={{ false: colors.gray[300], true: colors.primary[600] }}
-            thumbColor={notifications ? colors.white : colors.gray[100]}
+            onValueChange={(value) => {
+              setNotifications(value);
+              updateNotificationPreference('event', value);
+            }}
+            disabled={isLoading}
+            trackColor={{ false: themeColors.gray[300], true: themeColors.primary[600] }}
+            thumbColor={notifications ? themeColors.white : themeColors.gray[100]}
           />
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Privacy</Text>
+      <View style={[styles.section, { backgroundColor: themeColors.surface }]}>
+        <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Privacy</Text>
         
         <TouchableOpacity 
-          style={styles.settingItem} 
+          style={[styles.settingItem, { borderBottomColor: themeColors.border }]} 
           onPress={() => {
             Alert.alert(
               'Privacy Policy',
@@ -102,15 +272,15 @@ export default function SettingsScreen({ navigation }: any) {
           <View style={styles.settingLeft}>
             <Text style={styles.settingIcon}>🔒</Text>
             <View>
-              <Text style={styles.settingTitle}>Privacy Policy</Text>
-              <Text style={styles.settingDescription}>Read our privacy policy</Text>
+              <Text style={[styles.settingTitle, { color: themeColors.text }]}>Privacy Policy</Text>
+              <Text style={[styles.settingDescription, { color: themeColors.textSecondary }]}>Read our privacy policy</Text>
             </View>
           </View>
-          <Text style={styles.menuArrow}>›</Text>
+          <Text style={[styles.menuArrow, { color: themeColors.textSecondary }]}>›</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.settingItem} 
+          style={[styles.settingItem, { borderBottomColor: themeColors.border }]} 
           onPress={() => {
             Alert.alert(
               'Terms of Service',
@@ -122,45 +292,45 @@ export default function SettingsScreen({ navigation }: any) {
           <View style={styles.settingLeft}>
             <Text style={styles.settingIcon}>📋</Text>
             <View>
-              <Text style={styles.settingTitle}>Terms of Service</Text>
-              <Text style={styles.settingDescription}>Read our terms</Text>
+              <Text style={[styles.settingTitle, { color: themeColors.text }]}>Terms of Service</Text>
+              <Text style={[styles.settingDescription, { color: themeColors.textSecondary }]}>Read our terms</Text>
             </View>
           </View>
-          <Text style={styles.menuArrow}>›</Text>
+          <Text style={[styles.menuArrow, { color: themeColors.textSecondary }]}>›</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>App Settings</Text>
+      <View style={[styles.section, { backgroundColor: themeColors.surface }]}>
+        <Text style={[styles.sectionTitle, { color: themeColors.text }]}>App Settings</Text>
         
-        <TouchableOpacity style={styles.settingItem} onPress={handleClearCache}>
+        <TouchableOpacity style={[styles.settingItem, { borderBottomColor: themeColors.border }]} onPress={handleClearCache}>
           <View style={styles.settingLeft}>
             <Text style={styles.settingIcon}>🗑️</Text>
             <View>
-              <Text style={styles.settingTitle}>Clear Cache</Text>
-              <Text style={styles.settingDescription}>Free up storage space</Text>
+              <Text style={[styles.settingTitle, { color: themeColors.text }]}>Clear Cache</Text>
+              <Text style={[styles.settingDescription, { color: themeColors.textSecondary }]}>Free up storage space</Text>
             </View>
           </View>
-          <Text style={styles.menuArrow}>›</Text>
+          <Text style={[styles.menuArrow, { color: themeColors.textSecondary }]}>›</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.settingItem} onPress={() => Alert.alert('Version', 'Word of Covenant Church v1.0.0')}>
+        <TouchableOpacity style={[styles.settingItem, { borderBottomColor: themeColors.border }]} onPress={() => Alert.alert('Version', 'Word of Covenant Church v1.0.0')}>
           <View style={styles.settingLeft}>
             <Text style={styles.settingIcon}>ℹ️</Text>
             <View>
-              <Text style={styles.settingTitle}>App Version</Text>
-              <Text style={styles.settingDescription}>1.0.0</Text>
+              <Text style={[styles.settingTitle, { color: themeColors.text }]}>App Version</Text>
+              <Text style={[styles.settingDescription, { color: themeColors.textSecondary }]}>1.0.0</Text>
             </View>
           </View>
-          <Text style={styles.menuArrow}>›</Text>
+          <Text style={[styles.menuArrow, { color: themeColors.textSecondary }]}>›</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account</Text>
+      <View style={[styles.section, { backgroundColor: themeColors.surface }]}>
+        <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Account</Text>
         
         <TouchableOpacity 
-          style={styles.settingItem}
+          style={[styles.settingItem, { borderBottomColor: themeColors.border }]}
           onPress={() => {
             Alert.alert(
               'Delete Account',
@@ -190,11 +360,11 @@ export default function SettingsScreen({ navigation }: any) {
           <View style={styles.settingLeft}>
             <Text style={styles.settingIcon}>⚠️</Text>
             <View>
-              <Text style={[styles.settingTitle, { color: colors.error }]}>Delete Account</Text>
-              <Text style={styles.settingDescription}>Permanently delete your account</Text>
+              <Text style={[styles.settingTitle, { color: themeColors.error }]}>Delete Account</Text>
+              <Text style={[styles.settingDescription, { color: themeColors.textSecondary }]}>Permanently delete your account</Text>
             </View>
           </View>
-          <Text style={styles.menuArrow}>›</Text>
+          <Text style={[styles.menuArrow, { color: themeColors.textSecondary }]}>›</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -204,19 +374,15 @@ export default function SettingsScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   section: {
-    backgroundColor: colors.white,
     marginTop: 16,
     paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: colors.primary[100],
     marginHorizontal: 16,
     borderRadius: 12,
     overflow: 'hidden',
     elevation: 2,
-    shadowColor: colors.primary[900],
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -224,12 +390,40 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.gray[500],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginHorizontal: 16,
     marginTop: 8,
     marginBottom: 12,
+  },
+  themeContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 12,
+  },
+  themeButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  themeBtnIcon: {
+    fontSize: 28,
+    marginBottom: 6,
+  },
+  themeBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  themeHint: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
   settingItem: {
     flexDirection: 'row',
@@ -238,7 +432,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.gray[100],
   },
   settingLeft: {
     flexDirection: 'row',
@@ -252,16 +445,13 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.gray[900],
     marginBottom: 2,
   },
   settingDescription: {
     fontSize: 14,
-    color: colors.gray[500],
   },
   menuArrow: {
     fontSize: 28,
-    color: colors.gray[400],
     fontWeight: '300',
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,14 +11,37 @@ import {
 } from 'react-native';
 import { donationsService } from '../services';
 import { colors } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
 
 export default function GiveScreen() {
+  const { user } = useAuth();
   const [amount, setAmount] = useState('');
   const [donorName, setDonorName] = useState('');
   const [donorEmail, setDonorEmail] = useState('');
   const [purpose, setPurpose] = useState('Tithe');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [canEditDonorInfo, setCanEditDonorInfo] = useState(false);
+
+  // Check if user is in Media department (can help others donate)
+  useEffect(() => {
+    if (user) {
+      const userDepartments = user.departments || [];
+      const isMediaMember = userDepartments.some((dept: string) => 
+        dept.toLowerCase().includes('media')
+      );
+      
+      setCanEditDonorInfo(isMediaMember);
+      
+      // Auto-fill user info if not media or if media hasn't changed it
+      if (!donorName) {
+        setDonorName(user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim());
+      }
+      if (!donorEmail) {
+        setDonorEmail(user.email || '');
+      }
+    }
+  }, [user]);
 
   const purposes = ['Tithe', 'Offering', 'Building Fund', 'Missions', 'Special Project', 'Other'];
   const quickAmounts = ['1000', '5000', '10000', '20000', '50000'];
@@ -159,24 +182,28 @@ export default function GiveScreen() {
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Name *</Text>
+          {canEditDonorInfo && (
+            <Text style={styles.helperText}>Media: You can help members donate</Text>
+          )}
           <TextInput
-            style={styles.input}
+            style={[styles.input, !canEditDonorInfo && !isAnonymous && styles.inputDisabled]}
             placeholder="Your name"
             value={donorName}
             onChangeText={setDonorName}
-            editable={!isAnonymous}
+            editable={canEditDonorInfo || isAnonymous}
           />
         </View>
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Email *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, !canEditDonorInfo && styles.inputDisabled]}
             placeholder="your.email@example.com"
             value={donorEmail}
             onChangeText={setDonorEmail}
             keyboardType="email-address"
             autoCapitalize="none"
+            editable={canEditDonorInfo}
           />
         </View>
 
@@ -298,6 +325,12 @@ const styles = StyleSheet.create({
     color: colors.gray[700],
     marginBottom: 8,
   },
+  helperText: {
+    fontSize: 12,
+    color: colors.primary[600],
+    fontStyle: 'italic',
+    marginBottom: 4,
+  },
   input: {
     backgroundColor: colors.white,
     borderWidth: 1,
@@ -306,6 +339,10 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     color: colors.gray[900],
+  },
+  inputDisabled: {
+    backgroundColor: colors.gray[100],
+    color: colors.gray[600],
   },
   quickAmounts: {
     marginTop: 8,

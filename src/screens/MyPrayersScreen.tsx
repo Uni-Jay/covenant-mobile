@@ -7,19 +7,24 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
+import api from '../services/api';
 
 interface PrayerRequest {
   id: number;
-  title: string;
+  name: string;
+  email: string;
+  phone?: string;
+  request: string;
   category: string;
-  description: string;
-  isUrgent: boolean;
-  status: 'pending' | 'answered' | 'in-progress';
-  createdAt: string;
-  prayerCount: number;
+  is_anonymous: boolean;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export default function MyPrayersScreen({ navigation }: any) {
@@ -29,18 +34,19 @@ export default function MyPrayersScreen({ navigation }: any) {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'answered'>('all');
 
-  useEffect(() => {
-    loadMyPrayers();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadMyPrayers();
+    }, [])
+  );
 
   const loadMyPrayers = async () => {
     try {
-      // TODO: Implement API endpoint to get user's prayer requests
-      // For now, mock data
-      const mockPrayers: PrayerRequest[] = [];
-      setPrayers(mockPrayers);
+      const response = await api.get('/prayer-requests/my-prayers');
+      setPrayers(response.data.requests || []);
     } catch (error) {
       console.error('Error loading prayers:', error);
+      Alert.alert('Error', 'Failed to load your prayer requests');
     } finally {
       setIsLoading(false);
     }
@@ -98,10 +104,10 @@ export default function MyPrayersScreen({ navigation }: any) {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'answered':
         return colors.success;
-      case 'in-progress':
+      case 'ongoing':
         return colors.primary[600];
       default:
         return colors.gray[500];
@@ -109,10 +115,10 @@ export default function MyPrayersScreen({ navigation }: any) {
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'answered':
         return '✓';
-      case 'in-progress':
+      case 'ongoing':
         return '⏳';
       default:
         return '🙏';
@@ -121,7 +127,7 @@ export default function MyPrayersScreen({ navigation }: any) {
 
   const filteredPrayers = prayers.filter((prayer) => {
     if (filter === 'all') return true;
-    return prayer.status === filter;
+    return prayer.status?.toLowerCase() === filter;
   });
 
   if (isLoading) {
@@ -196,38 +202,30 @@ export default function MyPrayersScreen({ navigation }: any) {
                   <View
                     style={[
                       styles.statusBadge,
-                      { backgroundColor: getStatusColor(prayer.status) },
+                      { backgroundColor: getStatusColor(prayer.status || 'pending') },
                     ]}
                   >
-                    <Text style={styles.statusIcon}>{getStatusIcon(prayer.status)}</Text>
+                    <Text style={styles.statusIcon}>{getStatusIcon(prayer.status || 'pending')}</Text>
                     <Text style={styles.statusText}>
-                      {prayer.status.charAt(0).toUpperCase() + prayer.status.slice(1)}
+                      {(prayer.status || 'pending').charAt(0).toUpperCase() + (prayer.status || 'pending').slice(1)}
                     </Text>
                   </View>
-                  {prayer.isUrgent && (
-                    <View style={styles.urgentBadge}>
-                      <Text style={styles.urgentText}>🔥 Urgent</Text>
-                    </View>
-                  )}
                 </View>
 
-                <Text style={styles.prayerTitle}>{prayer.title}</Text>
+                <Text style={styles.prayerTitle}>Prayer Request</Text>
                 <Text style={styles.prayerCategory}>📂 {prayer.category}</Text>
                 <Text style={styles.prayerDescription} numberOfLines={3}>
-                  {prayer.description}
+                  {prayer.request}
                 </Text>
 
                 <View style={styles.prayerMeta}>
                   <Text style={styles.metaText}>
-                    🙏 {prayer.prayerCount} people praying
-                  </Text>
-                  <Text style={styles.metaText}>
-                    {new Date(prayer.createdAt).toLocaleDateString()}
+                    {new Date(prayer.created_at).toLocaleDateString()}
                   </Text>
                 </View>
 
                 <View style={styles.actionButtons}>
-                  {prayer.status !== 'answered' && (
+                  {prayer.status?.toLowerCase() !== 'answered' && (
                     <TouchableOpacity
                       style={styles.answeredButton}
                       onPress={() => handleMarkAnswered(prayer.id)}

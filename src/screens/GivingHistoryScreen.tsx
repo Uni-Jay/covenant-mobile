@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
+import { donationsService } from '../services';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface Donation {
   id: number;
@@ -32,14 +34,20 @@ export default function GivingHistoryScreen({ navigation }: any) {
     loadGivingHistory();
   }, []);
 
+  // Reload when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadGivingHistory();
+    }, [])
+  );
+
   const loadGivingHistory = async () => {
     try {
-      // TODO: Implement API endpoint to get user's donation history
-      // For now, mock data
-      const mockDonations: Donation[] = [];
-      setDonations(mockDonations);
+      const response = await donationsService.getHistory();
+      setDonations(response.donations || []);
     } catch (error) {
       console.error('Error loading donations:', error);
+      Alert.alert('Error', 'Failed to load donation history');
     } finally {
       setIsLoading(false);
     }

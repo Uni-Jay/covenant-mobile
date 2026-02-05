@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import { prayerService } from '../services';
 import { colors } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
 
 export default function PrayerScreen() {
+  const { user } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -19,6 +21,15 @@ export default function PrayerScreen() {
   const [requestText, setRequestText] = useState('');
   const [isUrgent, setIsUrgent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Auto-fill user's name and email
+  useEffect(() => {
+    if (user) {
+      const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+      setName(fullName);
+      setEmail(user.email || '');
+    }
+  }, [user]);
 
   const categories = ['General', 'Health', 'Family', 'Work', 'Finances', 'Spiritual', 'Other'];
 

@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import * as SplashScreenExpo from 'expo-splash-screen';
 import { AuthProvider } from './src/context/AuthContext';
+import { ThemeProvider } from './src/context/ThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import SplashScreen from './src/components/SplashScreen';
@@ -55,12 +56,14 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <View style={{ flex: 1 }}>
-        <AuthProvider>
-          <AppNavigator />
-          <StatusBar style="light" />
-        </AuthProvider>
-      </View>
+      <ThemeProvider>
+        <View style={{ flex: 1 }}>
+          <AuthProvider>
+            <AppNavigator />
+            <StatusBar style="light" />
+          </AuthProvider>
+        </View>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
