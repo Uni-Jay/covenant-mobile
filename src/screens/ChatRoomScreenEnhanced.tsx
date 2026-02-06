@@ -53,6 +53,16 @@ interface TypingUser {
   name: string;
 }
 
+interface GroupMember {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  profileImage?: string;
+  photo?: string;
+  role: string;
+}
+
 const ChatRoomScreenEnhanced = () => {
   const route = useRoute<RouteProp<RouteParams, 'ChatRoom'>>();
   const navigation = useNavigation();
@@ -70,6 +80,12 @@ const ChatRoomScreenEnhanced = () => {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [showMessageInfo, setShowMessageInfo] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ uri: string; messageId: number; isOwn: boolean } | null>(null);
+  
+  // @ Mention functionality
+  const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [filteredMembers, setFilteredMembers] = useState<GroupMember[]>([]);
   
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   
@@ -163,6 +179,7 @@ const ChatRoomScreenEnhanced = () => {
 
   useEffect(() => {
     loadMessages();
+    loadGroupMembers(); // Load members for @ mentions
     
     // Mark as read immediately when screen loads
     markMessagesAsRead();
@@ -222,6 +239,18 @@ const ChatRoomScreenEnhanced = () => {
     }
   };
 
+  const loadGroupMembers = async () => {
+    try {
+      console.log('[ChatRoom] Loading group members for:', groupId);
+      const response = await api.get(`/chat/groups/${groupId}/members`);
+      const membersData = response.data.members || [];
+      setGroupMembers(membersData);
+      console.log('[ChatRoom] Loaded', membersData.length, 'members');
+    } catch (error) {
+      console.error('Load group members error:', error);
+    }
+  };
+
   const markMessagesAsRead = async () => {
     try {
       await api.put(`/chat/groups/${groupId}/messages/read`);
@@ -243,6 +272,98 @@ const ChatRoomScreenEnhanced = () => {
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
+
+    // Detect @ mention
+    const lastWord = text.split(' ').pop() || '';
+    if (lastWord.startsWith('@') && lastWord.length > 1) {
+      // Show mention suggestions
+      const query = lastWord.substring(1).toLowerCase();
+      setMentionQuery(query);
+      const filtered = groupMembers.filter(member => {
+        const fullName = `${member.first_name} ${member.last_name}`.toLowerCase();
+        return fullName.includes(query) || member.email.toLowerCase().includes(query);
+      });
+      setFilteredMembers(filtered);
+      setShowMentionSuggestions(true);
+    } else if (lastWord === '@') {
+      // Show all members
+      setMentionQuery('');
+      setFilteredMembers(groupMembers);
+      setShowMentionSuggestions(true);
+    } else {
+      // Hide mention suggestions
+      setShowMentionSuggestions(false);
+    }
+  };
+
+  const handleSelectMention = (member: GroupMember) => {
+    // Replace the @ mention with the selected user
+    const words = message.split(' ');
+    words[words.length - 1] = `@${member.first_name} ${member.last_name}`;
+    setMessage(words.join(' ') + ' ');
+    setShowMentionSuggestions(false);
+  };
+
+  // Parse message text to highlight @ mentions
+  const renderMessageText = (text: string, isOwn: boolean) => {
+    const mentionRegex = /@([A-Za-z]+\s[A-Za-z]+)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = mentionRegex.exec(text)) !== null) {
+      // Add text before mention
+      if (match.index > lastIndex) {
+        parts.push(
+          <Text key={`text-${lastIndex}`} style={[
+            styles.messageText, 
+            { color: isOwn ? '#FFFFFF' : colors.text }
+          ]}>
+            {text.substring(lastIndex, match.index)}
+          </Text>
+        );
+      }
+
+      // Add mention with highlighting
+      parts.push(
+        <Text 
+          key={`mention-${match.index}`} 
+          style={[
+            styles.messageText, 
+            styles.mentionText,
+            { 
+              color: isOwn ? '#FFFFFF' : colors.primary[700],
+              backgroundColor: isOwn ? 'rgba(255,255,255,0.2)' : colors.primary[100],
+            }
+          ]}
+        >
+          {match[0]}
+        </Text>
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push(
+        <Text key={`text-${lastIndex}`} style={[
+          styles.messageText, 
+          { color: isOwn ? '#FFFFFF' : colors.text }
+        ]}>
+          {text.substring(lastIndex)}
+        </Text>
+      );
+    }
+
+    return parts.length > 0 ? <Text>{parts}</Text> : (
+      <Text style={[
+        styles.messageText, 
+        { color: isOwn ? '#FFFFFF' : colors.text }
+      ]}>
+        {text}
+      </Text>
+    );
   };
 
   const handleSend = async () => {
@@ -521,12 +642,9 @@ const ChatRoomScreenEnhanced = () => {
         item.isOwn ? { backgroundColor: colors.primary[600] } : { backgroundColor: colors.surface },
       ]}>
         {item.messageType === 'text' && (
-          <Text style={[
-            styles.messageText, 
-            { color: item.isOwn ? '#FFFFFF' : colors.text }
-          ]}>
-            {item.message}
-          </Text>
+          <View>
+            {renderMessageText(item.message, item.isOwn)}
+          </View>
         )}
         
         {item.messageType === 'image' && item.fileUrl && (
@@ -985,6 +1103,45 @@ const ChatRoomScreenEnhanced = () => {
         </Modal>
 
         <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+          {/* @ Mention Suggestions */}
+          {showMentionSuggestions && filteredMembers.length > 0 && (
+            <View style={[styles.mentionSuggestions, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+              <FlatList
+                data={filteredMembers.slice(0, 5)} // Show max 5 suggestions
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[styles.mentionItem, { borderBottomColor: colors.border }]}
+                    onPress={() => handleSelectMention(item)}
+                  >
+                    {item.photo || item.profileImage ? (
+                      <Image
+                        source={{ uri: item.photo || item.profileImage }}
+                        style={styles.mentionAvatar}
+                      />
+                    ) : (
+                      <View style={[styles.mentionAvatar, styles.mentionAvatarPlaceholder, { backgroundColor: colors.primary[200] }]}>
+                        <Text style={[styles.mentionAvatarText, { color: colors.primary[700] }]}>
+                          {item.first_name[0]}{item.last_name[0]}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.mentionInfo}>
+                      <Text style={[styles.mentionName, { color: colors.text }]}>
+                        {item.first_name} {item.last_name}
+                      </Text>
+                      <Text style={[styles.mentionRole, { color: colors.textSecondary }]}>
+                        {item.role}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                style={styles.mentionList}
+                nestedScrollEnabled
+              />
+            </View>
+          )}
+
           <TouchableOpacity
             style={[styles.attachButton, { backgroundColor: colors.primary[50] }]}
             onPress={() => setShowAttachMenu(!showAttachMenu)}
@@ -1415,6 +1572,60 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
+  },
+  // @ Mention styles
+  mentionSuggestions: {
+    position: 'absolute',
+    bottom: '100%',
+    left: 0,
+    right: 0,
+    maxHeight: 200,
+    borderTopWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  mentionList: {
+    maxHeight: 200,
+  },
+  mentionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+  },
+  mentionAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  mentionAvatarPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mentionAvatarText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  mentionInfo: {
+    flex: 1,
+  },
+  mentionName: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  mentionRole: {
+    fontSize: 12,
+  },
+  mentionText: {
+    fontWeight: '600',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
 });
 

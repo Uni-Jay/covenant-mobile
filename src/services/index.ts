@@ -32,9 +32,9 @@ export const authService = {
       password: data.password,
       firstName,
       lastName,
-      phone: data.phoneNumber || null,
-      gender: data.gender || null,
-      departments: data.departments || [],
+      phone: data.phoneNumber,
+      gender: data.gender,
+      dateOfBirth: data.dateOfBirth,
     };
     
     const response = await api.post('/auth/register', registerPayload);

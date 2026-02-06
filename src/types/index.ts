@@ -44,9 +44,9 @@ export interface RegisterData {
   email: string;
   password: string;
   fullName: string;
-  phoneNumber?: string;
-  gender?: 'male' | 'female';
-  departments?: string[];
+  phoneNumber: string;
+  gender: 'male' | 'female';
+  dateOfBirth: string;
 }
 
 export interface Event {

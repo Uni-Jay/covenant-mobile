@@ -175,14 +175,13 @@ const ChatListScreen = () => {
                 <Text style={[styles.lastMessage, { color: colors.textSecondary }]} numberOfLines={1}>
                   {group.last_message || group.description || 'No messages yet'}
                 </Text>
-                <View style={styles.checkmarkContainer}>
-                  <Text style={[
-                    styles.checkmark,
-                    { color: group.unread_count && group.unread_count > 0 ? colors.textSecondary : colors.primary[600] }
-                  ]}>
-                    {group.unread_count && group.unread_count > 0 ? '✓' : '✓✓'}
-                  </Text>
-                </View>
+                {group.unread_count !== undefined && group.unread_count > 0 && (
+                  <View style={[styles.unreadBadge, { backgroundColor: colors.primary[600] }]}>
+                    <Text style={styles.unreadCount}>
+                      {group.unread_count > 99 ? '99+' : group.unread_count}
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
           </TouchableOpacity>
@@ -279,6 +278,19 @@ const styles = StyleSheet.create({
   lastMessage: {
     fontSize: 15,
     flex: 1,
+  },
+  unreadBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  unreadCount: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   checkmarkContainer: {
     marginLeft: 8,

@@ -12,22 +12,10 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 import { useGoogleAuth } from '../services/googleAuth.service';
-
-const DEPARTMENTS = [
-  'Choir',
-  'Drama',
-  'Usher',
-  'Media',
-  'Covenant Men',
-  'Good Women',
-  'Youth',
-  'Children',
-  'Prayer Team',
-  'Evangelism',
-];
 
 export default function RegisterScreen({ navigation }: any) {
   const [fullName, setFullName] = useState('');
@@ -36,7 +24,8 @@ export default function RegisterScreen({ navigation }: any) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | undefined>(undefined);
-  const [departments, setDepartments] = useState<string[]>([]);
+  const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(undefined);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const { register, googleLogin } = useAuth();
@@ -73,12 +62,16 @@ export default function RegisterScreen({ navigation }: any) {
     }
   };
 
-  const toggleDepartment = (dept: string) => {
-    if (departments.includes(dept)) {
-      setDepartments(departments.filter(d => d !== dept));
-    } else {
-      setDepartments([...departments, dept]);
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setDateOfBirth(selectedDate);
     }
+  };
+
+  const formatDate = (date: Date | undefined) => {
+    if (!date) return 'Select Date';
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const handleRegister = async () => {
@@ -87,8 +80,18 @@ export default function RegisterScreen({ navigation }: any) {
       return;
     }
 
+    if (!phoneNumber) {
+      Alert.alert('Error', 'Phone number is required');
+      return;
+    }
+
     if (!gender) {
       Alert.alert('Error', 'Please select your gender');
+      return;
+    }
+
+    if (!dateOfBirth) {
+      Alert.alert('Error', 'Please select your date of birth');
       return;
     }
 
@@ -110,7 +113,7 @@ export default function RegisterScreen({ navigation }: any) {
         fullName, 
         phoneNumber,
         gender,
-        departments: departments.length > 0 ? departments : undefined,
+        dateOfBirth: dateOfBirth.toISOString().split('T')[0], // Format as YYYY-MM-DD
       });
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -175,7 +178,7 @@ export default function RegisterScreen({ navigation }: any) {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Phone Number</Text>
+            <Text style={styles.label}>Phone Number *</Text>
             <TextInput
               style={styles.input}
               placeholder="+234 XXX XXX XXXX"
@@ -227,30 +230,26 @@ export default function RegisterScreen({ navigation }: any) {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Departments (Optional)</Text>
-            <Text style={styles.helpText}>Select all that apply</Text>
-            <View style={styles.departmentsContainer}>
-              {DEPARTMENTS.map((dept) => (
-                <TouchableOpacity
-                  key={dept}
-                  style={[
-                    styles.departmentChip,
-                    departments.includes(dept) && styles.departmentChipActive,
-                  ]}
-                  onPress={() => toggleDepartment(dept)}
-                  disabled={isLoading}
-                >
-                  <Text
-                    style={[
-                      styles.departmentChipText,
-                      departments.includes(dept) && styles.departmentChipTextActive,
-                    ]}
-                  >
-                    {dept}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <Text style={styles.label}>Date of Birth *</Text>
+            <TouchableOpacity
+              style={[styles.input, styles.dateButton]}
+              onPress={() => setShowDatePicker(true)}
+              disabled={isLoading}
+            >
+              <Text style={[styles.dateText, !dateOfBirth && styles.placeholderText]}>
+                {formatDate(dateOfBirth)}
+              </Text>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={dateOfBirth || new Date()}
+                mode="date"
+                display="default"
+                onChange={onDateChange}
+                maximumDate={new Date()}
+              />
+            )}
+            <Text style={styles.helpText}>We'll send you birthday wishes! 🎂</Text>
           </View>
 
           <View style={styles.inputContainer}>
@@ -482,7 +481,17 @@ const styles = StyleSheet.create({
   helpText: {
     fontSize: 13,
     color: colors.gray[500],
-    marginBottom: 8,
+    marginTop: 4,
+  },
+  dateButton: {
+    justifyContent: 'center',
+  },
+  dateText: {
+    fontSize: 16,
+    color: colors.gray[900],
+  },
+  placeholderText: {
+    color: colors.gray[400],
   },
   departmentsContainer: {
     flexDirection: 'row',

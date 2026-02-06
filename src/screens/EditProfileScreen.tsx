@@ -24,29 +24,7 @@ export default function EditProfileScreen({ navigation }: any) {
   const [phone, setPhone] = useState(user?.phone || user?.phoneNumber || '');
   const [address, setAddress] = useState(user?.address || '');
   const [gender, setGender] = useState<'male' | 'female' | undefined>(user?.gender);
-  const [departments, setDepartments] = useState<string[]>(user?.departments || []);
   const [isLoading, setIsLoading] = useState(false);
-
-  const DEPARTMENTS = [
-    'Choir',
-    'Drama',
-    'Usher',
-    'Media',
-    'Covenant Men',
-    'Good Women',
-    'Youth',
-    'Children',
-    'Prayer Team',
-    'Evangelism',
-  ];
-
-  const toggleDepartment = (dept: string) => {
-    if (departments.includes(dept)) {
-      setDepartments(departments.filter((d) => d !== dept));
-    } else {
-      setDepartments([...departments, dept]);
-    }
-  };
 
   const handleSave = async () => {
     if (!fullName.trim()) {
@@ -63,7 +41,6 @@ export default function EditProfileScreen({ navigation }: any) {
         phone,
         address,
         gender,
-        departments,
       });
 
       // Update user in context
@@ -183,30 +160,7 @@ export default function EditProfileScreen({ navigation }: any) {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Departments</Text>
-          <Text style={styles.helpText}>Select all that apply</Text>
-          <View style={styles.departmentsContainer}>
-            {DEPARTMENTS.map((dept) => (
-              <TouchableOpacity
-                key={dept}
-                style={[
-                  styles.departmentChip,
-                  departments.includes(dept) && styles.departmentChipActive,
-                ]}
-                onPress={() => toggleDepartment(dept)}
-                disabled={isLoading}
-              >
-                <Text
-                  style={[
-                    styles.departmentChipText,
-                    departments.includes(dept) && styles.departmentChipTextActive,
-                  ]}
-                >
-                  {dept}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Text style={styles.infoText}>ℹ️ Departments are assigned by church admin/media team</Text>
         </View>
 
         <TouchableOpacity
@@ -327,6 +281,15 @@ const styles = StyleSheet.create({
   },
   genderButtonTextActive: {
     color: colors.primary[800],
+  },
+  infoText: {
+    fontSize: 14,
+    color: colors.gray[600],
+    backgroundColor: colors.primary[50],
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary[500],
   },
   departmentsContainer: {
     flexDirection: 'row',
