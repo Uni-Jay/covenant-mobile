@@ -52,6 +52,7 @@ import GivingReportScreen from '../screens/GivingReportScreen';
 import EventsReportScreen from '../screens/EventsReportScreen';
 import GrowthReportScreen from '../screens/GrowthReportScreen';
 import DepartmentManagementScreen from '../screens/DepartmentManagementScreen';
+import AIChatScreen from '../screens/AIChatScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -223,6 +224,7 @@ function MainStack() {
       <Stack.Screen name="EventsReport" component={EventsReportScreen} options={{ title: 'Events Report' }} />
       <Stack.Screen name="GrowthReport" component={GrowthReportScreen} options={{ title: 'Growth Report' }} />
       <Stack.Screen name="DepartmentManagement" component={DepartmentManagementScreen} options={{ title: 'Department Management' }} />
+      <Stack.Screen name="AIChat" component={AIChatScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

@@ -67,6 +67,7 @@ export default function ProfileScreen({ navigation }: any) {
     { icon: '📺', title: 'Live Stream', route: 'LiveStream', requiresAdmin: false },
     { icon: '🎙️', title: 'Sermons', route: 'Sermons', requiresAdmin: false },
     { icon: '💝', title: 'Give', route: 'Give', requiresAdmin: false },
+    { icon: '🤖', title: 'AI Bible Assistant', route: 'AIChat', requiresAdmin: false },
     { icon: '💳', title: 'Giving History', route: 'GivingHistory', requiresAdmin: false },
     { icon: '⚙️', title: 'Settings', route: 'Settings', requiresAdmin: false },
     { icon: '❓', title: 'Help & Support', route: 'Support', requiresAdmin: false },
