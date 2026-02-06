@@ -9,6 +9,9 @@ import api, {
   attendanceService
 } from './api';
 import { AuthResponse, LoginCredentials, RegisterData, User } from '../types';
+import { googleAuthService } from './googleAuth.service';
+
+export { googleAuthService };
 
 export const authService = {
   // Login with email and password

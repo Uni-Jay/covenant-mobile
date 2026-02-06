@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "Word of Covenant",
+    "name": "WCC",
     "slug": "word-of-covenant",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/images/Word of Covenant Logo.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/images/Word of Covenant Logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#1e3a8a"
     },
@@ -27,7 +27,7 @@
         "backgroundColor": "#1e3a8a"
       },
       "splash": {
-        "image": "./assets/splash-icon.png",
+        "image": "./assets/images/Word of Covenant Logo.png",
         "resizeMode": "contain",
         "backgroundColor": "#1e3a8a"
       },
@@ -43,7 +43,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/images/Word of Covenant Logo.png"
     },
     "plugins": [
       "expo-web-browser",

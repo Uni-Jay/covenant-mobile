@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,15 +10,50 @@ import {
   ScrollView,
   Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
+import { useGoogleAuth } from '../services/googleAuth.service';
 
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const { login, googleLogin } = useAuth();
+  const { request, response, promptAsync } = useGoogleAuth();
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      handleGoogleSuccess(authentication?.accessToken);
+    }
+  }, [response]);
+
+  const handleGoogleSuccess = async (accessToken: string | undefined) => {
+    if (!accessToken) return;
+    
+    setIsGoogleLoading(true);
+    try {
+      // Fetch user info from Google
+      const userInfoResponse = await fetch(
+        'https://www.googleapis.com/oauth2/v3/userinfo',
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+      const userInfo = await userInfoResponse.json();
+      
+      await googleLogin(accessToken, userInfo);
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      const errorMessage = error.message || 'Google sign-in failed. Please try again.';
+      Alert.alert('Google Sign-In Failed', errorMessage);
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -37,6 +72,15 @@ export default function LoginScreen({ navigation }: any) {
       Alert.alert('Login Failed', errorMessage);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      await promptAsync();
+    } catch (error: any) {
+      console.error('Google prompt error:', error);
+      Alert.alert('Error', 'Failed to open Google sign-in');
     }
   };
 
@@ -91,6 +135,27 @@ export default function LoginScreen({ navigation }: any) {
             <Text style={styles.buttonText}>
               {isLoading ? 'Logging in...' : 'Login'}
             </Text>
+          </TouchableOpacity>
+
+          <View style={styles.dividerContainer}>
+            <View style={styles.divider} />
+            <Text style={styles.dividerText}>OR</Text>
+            <View style={styles.divider} />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.googleButton, (isGoogleLoading || !request) && styles.buttonDisabled]}
+            onPress={handleGoogleLogin}
+            disabled={isGoogleLoading || isLoading || !request}
+          >
+            {isGoogleLoading ? (
+              <ActivityIndicator color={colors.primary[600]} />
+            ) : (
+              <>
+                <Text style={styles.googleIcon}>G</Text>
+                <Text style={styles.googleButtonText}>Continue with Google</Text>
+              </>
+            )}
           </TouchableOpacity>
 
           <View style={styles.footer}>
@@ -194,6 +259,48 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.gray[300],
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    color: colors.gray[500],
+    fontWeight: '600',
+  },
+  googleButton: {
+    backgroundColor: colors.white,
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.gray[300],
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  googleIcon: {
+    marginRight: 12,
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#DB4437',
+  },
+  googleButtonText: {
+    color: colors.gray[700],
+    fontSize: 16,
+    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',

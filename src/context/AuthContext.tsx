@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authService } from '../services';
+import { authService, googleAuthService } from '../services';
 import { User, LoginCredentials, RegisterData } from '../types';
 
 interface AuthContextType {
@@ -9,6 +9,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
+  googleLogin: (idToken: string, userInfo: any) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
 }
@@ -66,6 +67,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const googleLogin = async (idToken: string, userInfo: any) => {
+    try {
+      const response = await googleAuthService.processAuthResponse(idToken, userInfo);
+      await AsyncStorage.setItem('token', response.token);
+      await AsyncStorage.setItem('user', JSON.stringify(response.user));
+      setUser(response.user);
+    } catch (error) {
+      console.error('Google login error:', error);
+      throw error;
+    }
+  };
+
   const logout = async () => {
     try {
       await AsyncStorage.removeItem('token');
@@ -89,6 +102,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isAuthenticated: !!user,
         login,
         register,
+        googleLogin,
         logout,
         updateUser,
       }}
