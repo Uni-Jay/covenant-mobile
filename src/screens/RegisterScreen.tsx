@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,10 +14,13 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { googleAuthService } from '../services/googleAuth.service';
 import { colors } from '../theme/colors';
-import { useGoogleAuth } from '../services/googleAuth.service';
 
 export default function RegisterScreen({ navigation }: any) {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -29,38 +32,6 @@ export default function RegisterScreen({ navigation }: any) {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const { register, googleLogin } = useAuth();
-  const { request, response, promptAsync } = useGoogleAuth();
-
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { authentication } = response;
-      handleGoogleSuccess(authentication?.accessToken);
-    }
-  }, [response]);
-
-  const handleGoogleSuccess = async (accessToken: string | undefined) => {
-    if (!accessToken) return;
-    
-    setIsGoogleLoading(true);
-    try {
-      // Fetch user info from Google
-      const userInfoResponse = await fetch(
-        'https://www.googleapis.com/oauth2/v3/userinfo',
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
-      const userInfo = await userInfoResponse.json();
-      
-      await googleLogin(accessToken, userInfo);
-    } catch (error: any) {
-      console.error('Google sign-in error:', error);
-      const errorMessage = error.message || 'Google sign-in failed. Please try again.';
-      Alert.alert('Google Sign-In Failed', errorMessage);
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
@@ -127,11 +98,18 @@ export default function RegisterScreen({ navigation }: any) {
   };
 
   const handleGoogleRegister = async () => {
+    setIsGoogleLoading(true);
     try {
-      await promptAsync();
+      const userData = await googleAuthService.signIn();
+      console.log('Google sign-in successful:', userData);
+      await googleLogin(userData);
     } catch (error: any) {
-      console.error('Google prompt error:', error);
-      Alert.alert('Error', 'Failed to open Google sign-in');
+      console.error('Google sign-in error:', error);
+      if (error.message !== 'Sign in cancelled') {
+        Alert.alert('Google Sign-In Failed', error.message);
+      }
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
@@ -293,9 +271,9 @@ export default function RegisterScreen({ navigation }: any) {
           </View>
 
           <TouchableOpacity
-            style={[styles.googleButton, (isGoogleLoading || !request) && styles.buttonDisabled]}
+            style={[styles.googleButton, isGoogleLoading && styles.buttonDisabled]}
             onPress={handleGoogleRegister}
-            disabled={isGoogleLoading || isLoading || !request}
+            disabled={isGoogleLoading || isLoading}
           >
             {isGoogleLoading ? (
               <ActivityIndicator color={colors.primary[600]} />
@@ -319,7 +297,7 @@ export default function RegisterScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.white,

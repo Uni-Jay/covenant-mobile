@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,13 @@ import {
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { firstTimerService } from '../services';
-import { colors, primaryColor } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 const FirstTimerQRScreen = ({ navigation }: any) => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
+  const primaryColor = themeColors.primary[600];
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [scanning, setScanning] = useState(true);
@@ -44,7 +48,7 @@ const FirstTimerQRScreen = ({ navigation }: any) => {
         
         if (result.promoted) {
           Alert.alert(
-            '🎉 Congratulations!',
+            'ðŸŽ‰ Congratulations!',
             `${firstTimer.first_name} ${firstTimer.last_name} has been promoted to membership!\n\nUsername: ${result.username}\nTemp Password: ${result.tempPassword}`,
             [
               {
@@ -59,7 +63,7 @@ const FirstTimerQRScreen = ({ navigation }: any) => {
           );
         } else {
           Alert.alert(
-            '✅ Check-in Successful',
+            'âœ… Check-in Successful',
             `${firstTimer.first_name} ${firstTimer.last_name}\n\nAttendance: ${result.attendanceCount}/6\nRemaining to membership: ${result.remainingToMembership}`,
             [
               {
@@ -216,7 +220,8 @@ const FirstTimerQRScreen = ({ navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
+
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
@@ -289,7 +294,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButton: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
   },
   secondaryButton: {
     backgroundColor: '#FFFFFF',
@@ -300,7 +305,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   secondaryButtonText: {
-    color: primaryColor,
+    color: colors.primary[600],
     fontSize: 16,
     fontWeight: '600',
   },

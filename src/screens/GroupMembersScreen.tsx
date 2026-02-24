@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,13 +11,8 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { chatService } from '../services/api';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
-
-const primaryColor = colors.primary[800];
-const backgroundColor = colors.gray[50];
-const textColor = colors.gray[900];
-const accentColor = colors.accent;
-const dangerColor = colors.error;
 
 interface Member {
   id: number;
@@ -37,6 +32,10 @@ type RouteParams = {
 };
 
 const GroupMembersScreen: React.FC = () => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
+  const primaryColor = themeColors.primary[600];
+  const accentColor = themeColors.warning;
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'GroupMembers'>>();
   const { groupId, groupName, userRole = 'member' } = route.params;
@@ -186,16 +185,16 @@ const GroupMembersScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: backgroundColor,
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: backgroundColor,
+    backgroundColor: colors.background,
   },
   searchContainer: {
     padding: 16,
@@ -209,7 +208,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: textColor,
+    color: colors.text,
   },
   memberCountContainer: {
     padding: 12,
@@ -240,7 +239,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -256,7 +255,7 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 16,
     fontWeight: '600',
-    color: textColor,
+    color: colors.text,
     marginBottom: 4,
   },
   memberEmail: {
@@ -279,7 +278,7 @@ const styles = StyleSheet.create({
   removeButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: dangerColor,
+    backgroundColor: colors.error,
     borderRadius: 8,
   },
   removeButtonText: {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,13 @@ import {
   Clipboard,
 } from 'react-native';
 import { donationsService } from '../services';
-import { colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 export default function GiveScreen() {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const { user } = useAuth();
   const [amount, setAmount] = useState('');
   const [donorName, setDonorName] = useState('');
@@ -238,7 +241,7 @@ export default function GiveScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

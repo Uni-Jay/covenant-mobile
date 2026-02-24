@@ -1,3 +1,5 @@
+﻿
+import { useTheme } from '../context/ThemeContext';
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -16,14 +18,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { eventsService, sermonsService } from '../services';
 import { primaryColor, accentColor, colors } from '../theme/colors';
-
-const backgroundColor = colors.background;
-const textColor = colors.gray[800];
 import { Event, Sermon } from '../types';
+
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreenRedesign({ navigation }: any) {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
+  const primaryColor = themeColors.primary[600];
+  const textColor = themeColors.text;
   const { user } = useAuth();
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [recentSermons, setRecentSermons] = useState<Sermon[]>([]);
@@ -251,10 +255,10 @@ export default function HomeScreenRedesign({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: backgroundColor,
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -319,7 +323,7 @@ const styles = StyleSheet.create({
   },
   quickActionLabel: {
     fontSize: 12,
-    color: textColor,
+    color: colors.text,
     textAlign: 'center',
   },
   section: {
@@ -337,13 +341,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: textColor,
+    color: colors.text,
     marginLeft: 8,
     flex: 1,
   },
   seeAll: {
     fontSize: 14,
-    color: primaryColor,
+    color: colors.primary[600],
     fontWeight: '600',
   },
   card: {
@@ -367,7 +371,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: `${primaryColor}15`,
+    backgroundColor: `${colors.primary[600]}15`,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -381,7 +385,7 @@ const styles = StyleSheet.create({
   serviceDay: {
     fontSize: 15,
     fontWeight: '600',
-    color: textColor,
+    color: colors.text,
     marginBottom: 2,
   },
   serviceTime: {
@@ -447,7 +451,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: `${primaryColor}15`,
+    backgroundColor: `${colors.primary[600]}15`,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -461,7 +465,7 @@ const styles = StyleSheet.create({
   sermonTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: textColor,
+    color: colors.text,
     marginBottom: 4,
   },
   sermonMeta: {

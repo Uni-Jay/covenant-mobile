@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,11 +15,10 @@ import { Paths } from 'expo-file-system';
 import { downloadAsync } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { colors, primaryColor, dangerColor } from '../theme/colors';
 import api from '../services/api';
-import { primaryColor, accentColor, dangerColor, colors } from '../theme/colors';
 
-const backgroundColor = colors.background;
-const textColor = colors.gray[800];
 
 interface Document {
   id: number;
@@ -34,6 +33,10 @@ interface Document {
 }
 
 const ChurchDocumentsScreen = () => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
+  const primaryColor = themeColors.primary[600];
+  const dangerColor = themeColors.error;
   const { user } = useAuth();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [letterheads, setLetterheads] = useState<Document[]>([]);
@@ -76,7 +79,7 @@ const ChurchDocumentsScreen = () => {
 
   const loadDocuments = async () => {
     try {
-      const response = await api.get('/api/documents');
+      const response = await api.get('/documents');
       setDocuments(response.data.documents);
     } catch (error) {
       console.error('Load documents error:', error);
@@ -88,7 +91,7 @@ const ChurchDocumentsScreen = () => {
 
   const loadLetterheads = async () => {
     try {
-      const response = await api.get('/api/documents/letterheads/all');
+      const response = await api.get('/documents/letterheads/all');
       setLetterheads(response.data.letterheads);
     } catch (error: any) {
       console.error('Load letterheads error:', error);
@@ -112,7 +115,7 @@ const ChurchDocumentsScreen = () => {
 
       if (downloadResult.status === 200) {
         // Record download
-        await api.post(`/api/documents/${doc.id}/download`);
+        await api.post(`/documents/${doc.id}/download`);
 
         // Share or open the file
         if (await Sharing.isAvailableAsync()) {
@@ -134,15 +137,15 @@ const ChurchDocumentsScreen = () => {
   const getDocumentIcon = (type: string) => {
     switch (type) {
       case 'letterhead':
-        return '📄';
+        return 'ðŸ“„';
       case 'form':
-        return '📋';
+        return 'ðŸ“‹';
       case 'certificate':
-        return '🏆';
+        return 'ðŸ†';
       case 'policy':
-        return '🛡️';
+        return 'ðŸ›¡ï¸';
       default:
-        return '📁';
+        return 'ðŸ“';
     }
   };
 
@@ -167,13 +170,13 @@ const ChurchDocumentsScreen = () => {
           <Text style={styles.metaText}>
             By {item.creatorFirstName} {item.creatorLastName}
           </Text>
-          <Text style={styles.metaText}>•</Text>
+          <Text style={styles.metaText}>â€¢</Text>
           <Text style={styles.metaText}>
             {new Date(item.createdAt).toLocaleDateString()}
           </Text>
           {item.downloadCount > 0 && (
             <>
-              <Text style={styles.metaText}>•</Text>
+              <Text style={styles.metaText}>â€¢</Text>
               <Text style={styles.metaText}>
                 {item.downloadCount} downloads
               </Text>
@@ -185,14 +188,14 @@ const ChurchDocumentsScreen = () => {
       {downloadingId === item.id ? (
         <ActivityIndicator size="small" color={primaryColor} />
       ) : (
-        <Text style={styles.downloadIcon}>⬇️</Text>
+        <Text style={styles.downloadIcon}>â¬‡ï¸</Text>
       )}
     </TouchableOpacity>
   );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyIcon}>📄</Text>
+      <Text style={styles.emptyIcon}>ðŸ“„</Text>
       <Text style={styles.emptyText}>
         {selectedTab === 'letterheads' 
           ? 'No letterheads available' 
@@ -206,7 +209,7 @@ const ChurchDocumentsScreen = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.accessDenied}>
-          <Text style={styles.accessDeniedIcon}>🔒</Text>
+          <Text style={styles.accessDeniedIcon}>ðŸ”’</Text>
           <Text style={styles.accessDeniedTitle}>Access Restricted</Text>
           <Text style={styles.accessDeniedText}>
             This section is only available to administrators and media department members.
@@ -242,7 +245,7 @@ const ChurchDocumentsScreen = () => {
             style={[styles.tab, selectedTab === 'documents' && styles.activeTab]}
             onPress={() => setSelectedTab('documents')}
           >
-            <Text style={styles.tabIcon}>📄</Text>
+            <Text style={styles.tabIcon}>ðŸ“„</Text>
             <Text style={[
               styles.tabText,
               selectedTab === 'documents' && styles.activeTabText
@@ -255,7 +258,7 @@ const ChurchDocumentsScreen = () => {
             style={[styles.tab, selectedTab === 'letterheads' && styles.activeTab]}
             onPress={() => setSelectedTab('letterheads')}
           >
-            <Text style={styles.tabIcon}>🏆</Text>
+            <Text style={styles.tabIcon}>ðŸ†</Text>
             <Text style={[
               styles.tabText,
               selectedTab === 'letterheads' && styles.activeTabText
@@ -268,7 +271,7 @@ const ChurchDocumentsScreen = () => {
 
       {selectedTab === 'letterheads' && !isExecutive && (
         <View style={styles.restrictedAccess}>
-          <Text style={styles.restrictedIcon}>🔒</Text>
+          <Text style={styles.restrictedIcon}>ðŸ”’</Text>
           <Text style={styles.restrictedText}>Executives Only</Text>
           <Text style={styles.restrictedSubtext}>
             Letterheads are restricted to church executives
@@ -296,10 +299,10 @@ const ChurchDocumentsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: backgroundColor,
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -309,7 +312,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: textColor,
+    color: colors.text,
   },
   accessDenied: {
     flex: 1,
@@ -342,7 +345,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: textColor,
+    color: colors.text,
     marginBottom: 4,
   },
   headerSubtitle: {
@@ -366,12 +369,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   activeTab: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
   },
   tabText: {
     fontSize: 15,
     fontWeight: '600',
-    color: primaryColor,
+    color: colors.primary[600],
   },
   activeTabText: {
     color: '#fff',
@@ -396,7 +399,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: `${primaryColor}15`,
+    backgroundColor: `${colors.primary[600]}15`,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -423,7 +426,7 @@ const styles = StyleSheet.create({
   documentTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: textColor,
+    color: colors.text,
     marginBottom: 4,
   },
   documentDescription: {
@@ -459,7 +462,7 @@ const styles = StyleSheet.create({
   restrictedText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: dangerColor,
+    color: colors.error,
     marginTop: 16,
   },
   restrictedSubtext: {

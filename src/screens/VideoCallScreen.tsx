@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,11 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
-import { colors } from '../theme/colors';
 import RtcEngine, { RtcSurfaceView, ChannelProfileType, IRtcEngine } from 'react-native-agora';
 import { AGORA_CONFIG } from '../config/agora.config';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 const { width, height } = Dimensions.get('window');
 
@@ -27,6 +28,8 @@ type RouteParams = {
 };
 
 const VideoCallScreen = () => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'VideoCall'>>();
   const { groupId, groupName } = route.params;
@@ -40,22 +43,36 @@ const VideoCallScreen = () => {
   const [networkQuality, setNetworkQuality] = useState<'excellent' | 'good' | 'poor' | 'bad' | 'unknown'>('unknown');
   const [participants, setParticipants] = useState<number[]>([]);
   const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const [callStarted, setCallStarted] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   const agoraEngineRef = useRef<IRtcEngine | null>(null);
 
   useEffect(() => {
     setupVideoSDKEngine();
-    
-    // Call timer
-    const interval = setInterval(() => {
-      setCallDuration(prev => prev + 1);
-    }, 1000);
 
     return () => {
-      clearInterval(interval);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
       leaveCall();
     };
   }, []);
+
+  // Start timer only when someone joins
+  useEffect(() => {
+    if (participants.length > 0 && !callStarted) {
+      setCallStarted(true);
+      timerRef.current = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [participants.length, callStarted]);
 
 
 
@@ -198,11 +215,19 @@ const VideoCallScreen = () => {
               colors={['#1e3a8a', '#3b82f6', '#60a5fa']}
               style={styles.placeholderGradient}
             >
-              <Text style={styles.placeholderIcon}>📹</Text>
-              <Text style={styles.placeholderText}>{groupName}</Text>
-              <Text style={styles.statusText}>
-                {isJoined ? 'Waiting for others to join...' : 'Connecting...'}
-              </Text>
+              <View style={styles.waitingContainer}>
+                <Text style={styles.placeholderIcon}>ðŸ“¹</Text>
+                <Text style={styles.placeholderText}>{groupName}</Text>
+                <View style={styles.waitingBadge}>
+                  <Text style={styles.waitingDot}>â—</Text>
+                  <Text style={styles.statusText}>
+                    {isJoined ? 'Waiting for others to join...' : 'Connecting...'}
+                  </Text>
+                </View>
+                {!callStarted && isJoined && (
+                  <Text style={styles.callNotStartedText}>Call will start when someone joins</Text>
+                )}
+              </View>
             </LinearGradient>
           )}
         </View>
@@ -219,7 +244,7 @@ const VideoCallScreen = () => {
               colors={['rgba(30,58,138,0.9)', 'rgba(59,130,246,0.9)']}
               style={styles.localVideo}
             >
-              <Text style={styles.videoOffIcon}>📷</Text>
+              <Text style={styles.videoOffIcon}>ðŸ“·</Text>
             </LinearGradient>
           )}
         </View>
@@ -231,20 +256,23 @@ const VideoCallScreen = () => {
         >
           <View style={styles.callInfo}>
             <View style={styles.headerRow}>
-              <View>
+              <View style={styles.groupInfo}>
                 <Text style={styles.groupName}>{groupName}</Text>
-                <Text style={styles.duration}>{formatDuration(callDuration)}</Text>
+                <View style={styles.durationContainer}>
+                  <View style={[styles.recordingDot, callStarted && styles.recordingDotActive]} />
+                  <Text style={styles.duration}>{formatDuration(callDuration)}</Text>
+                </View>
               </View>
               <View style={styles.statusIndicators}>
                 <View style={[styles.networkBadge, styles[`network_${networkQuality}`]]}>
                   <Text style={styles.networkIcon}>
-                    {networkQuality === 'excellent' ? '📶' : networkQuality === 'good' ? '📶' : networkQuality === 'poor' ? '📵' : '⚠️'}
+                    {networkQuality === 'excellent' ? 'ðŸ“¶' : networkQuality === 'good' ? 'ðŸ“¶' : networkQuality === 'poor' ? 'ðŸ“µ' : 'âš ï¸'}
                   </Text>
                   <Text style={styles.networkText}>{networkQuality}</Text>
                 </View>
                 {participants.length > 0 && (
                   <View style={styles.participantBadge}>
-                    <Text style={styles.participantIcon}>👥</Text>
+                    <Text style={styles.participantIcon}>ðŸ‘¥</Text>
                     <Text style={styles.participantText}>{participants.length + 1}</Text>
                   </View>
                 )}
@@ -253,7 +281,7 @@ const VideoCallScreen = () => {
             {connectionState !== 'connected' && (
               <View style={styles.connectionBanner}>
                 <Text style={styles.connectionText}>
-                  {connectionState === 'connecting' ? '⏳ Connecting...' : '❌ Disconnected'}
+                  {connectionState === 'connecting' ? 'â³ Connecting...' : 'âŒ Disconnected'}
                 </Text>
               </View>
             )}
@@ -274,7 +302,7 @@ const VideoCallScreen = () => {
                 colors={isMuted ? ['#dc2626', '#b91c1c'] : ['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
                 style={styles.controlGradient}
               >
-                <Text style={styles.controlIcon}>{isMuted ? '🔇' : '🎤'}</Text>
+                <Text style={styles.controlIcon}>{isMuted ? 'ðŸ”‡' : 'ðŸŽ¤'}</Text>
               </LinearGradient>
               <Text style={styles.controlLabel}>{isMuted ? 'Unmute' : 'Mute'}</Text>
             </TouchableOpacity>
@@ -287,7 +315,7 @@ const VideoCallScreen = () => {
                 colors={!isVideoOn ? ['#dc2626', '#b91c1c'] : ['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
                 style={styles.controlGradient}
               >
-                <Text style={styles.controlIcon}>{isVideoOn ? '📹' : '📷'}</Text>
+                <Text style={styles.controlIcon}>{isVideoOn ? 'ðŸ“¹' : 'ðŸ“·'}</Text>
               </LinearGradient>
               <Text style={styles.controlLabel}>{isVideoOn ? 'Stop Video' : 'Start Video'}</Text>
             </TouchableOpacity>
@@ -300,7 +328,7 @@ const VideoCallScreen = () => {
                 colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
                 style={styles.controlGradient}
               >
-                <Text style={styles.controlIcon}>🔄</Text>
+                <Text style={styles.controlIcon}>ðŸ”„</Text>
               </LinearGradient>
               <Text style={styles.controlLabel}>Flip</Text>
             </TouchableOpacity>
@@ -313,7 +341,7 @@ const VideoCallScreen = () => {
                 colors={['#dc2626', '#991b1b']}
                 style={styles.endCallGradient}
               >
-                <Text style={styles.endCallIcon}>📞</Text>
+                <Text style={styles.endCallIcon}>ðŸ“ž</Text>
               </LinearGradient>
               <Text style={styles.controlLabel}>End Call</Text>
             </TouchableOpacity>
@@ -321,7 +349,7 @@ const VideoCallScreen = () => {
 
           {!AGORA_CONFIG.appId && (
             <Text style={styles.noticeText}>
-              ⚠️ Agora App ID not configured{' \n'}
+              âš ï¸ Agora App ID not configured{' \n'}
               Please add your App ID in src/config/agora.config.ts
             </Text>
           )}
@@ -331,7 +359,7 @@ const VideoCallScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
@@ -353,19 +381,49 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  waitingContainer: {
+    alignItems: 'center',
+  },
   placeholderIcon: {
-    fontSize: 80,
-    marginBottom: 20,
+    fontSize: 100,
+    marginBottom: 24,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 8,
   },
   placeholderText: {
     color: '#fff',
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 16,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  waitingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 24,
+    marginBottom: 12,
+  },
+  waitingDot: {
+    color: '#fbbf24',
+    fontSize: 20,
+    marginRight: 8,
   },
   statusText: {
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.95)',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  callNotStartedText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    fontStyle: 'italic',
+    marginTop: 8,
   },
   localVideoContainer: {
     position: 'absolute',
@@ -424,6 +482,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+  },
+  groupInfo: {
+    flex: 1,
+  },
+  durationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recordingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginRight: 6,
+  },
+  recordingDotActive: {
+    backgroundColor: '#ef4444',
   },
   statusIndicators: {
     gap: 8,
@@ -492,13 +567,17 @@ const styles = StyleSheet.create({
   },
   groupName: {
     color: '#fff',
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   duration: {
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(255,255,255,0.95)',
     fontSize: 16,
+    fontWeight: '600',
   },
   bottomOverlay: {
     position: 'absolute',

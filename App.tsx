@@ -1,15 +1,42 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreenExpo from 'expo-splash-screen';
-import { AuthProvider } from './src/context/AuthContext';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ThemeProvider } from './src/context/ThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import SplashScreen from './src/components/SplashScreen';
+import socketService from './src/services/socket.service';
 
 // Keep native splash screen visible until app is ready
 SplashScreenExpo.preventAutoHideAsync().catch(() => {});
+
+// Inner component that has access to auth context
+function AppContent() {
+  const { user } = useAuth();
+  const navigationRef = React.useRef<any>(null);
+
+  // Initialize socket service when user logs in
+  useEffect(() => {
+    if (user?.id) {
+      console.log('[App] Connecting socket service for user:', user.id);
+      socketService.connect(user.id);
+
+      return () => {
+        socketService.disconnect();
+      };
+    }
+  }, [user?.id]);
+
+  return (
+    <>
+      <AppNavigator ref={navigationRef} />
+      <StatusBar style="light" />
+    </>
+  );
+}
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -56,14 +83,13 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <View style={{ flex: 1 }}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ThemeProvider>
           <AuthProvider>
-            <AppNavigator />
-            <StatusBar style="light" />
+            <AppContent />
           </AuthProvider>
-        </View>
-      </ThemeProvider>
+        </ThemeProvider>
+      </GestureHandlerRootView>
     </ErrorBoundary>
   );
 }

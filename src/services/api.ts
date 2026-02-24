@@ -3,18 +3,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 // Update this to your backend URL
-// For Android Emulator: use 10.0.2.2 instead of localhost
-// For iOS Simulator: localhost works
-// For physical devices: use your computer's IP address (found in Expo output)
+// IMPORTANT: When using physical device with USB, run: adb -s <device-id> reverse tcp:5000 tcp:5000
 const getApiBaseUrl = () => {
   if (__DEV__) {
     if (Platform.OS === 'android') {
-      return 'http://10.0.2.2:5000/api'; // Android emulator
+      // Using localhost - works with adb reverse for physical devices via USB
+      return 'http://localhost:5000/api';
     }
     return 'http://localhost:5000/api'; // iOS simulator
   }
   // Production URL (update when deploying)
-  return 'http://10.0.2.2:5000/api';
+  return 'http://localhost:5000/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();

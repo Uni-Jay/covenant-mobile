@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,12 @@ import {
   Share,
   Platform,
 } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Picker } from '@react-native-picker/picker';
 import QRCode from 'react-native-qrcode-svg';
 import { attendanceService } from '../services';
-import { colors, primaryColor } from '../theme/colors';
+import { colors } from '../theme/colors';
 import api from '../services/api';
 
 interface Event {
@@ -25,6 +26,8 @@ interface Event {
 }
 
 const GenerateAttendanceQRScreen = ({ navigation }: any) => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const [loading, setLoading] = useState(false);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [qrData, setQrData] = useState<any>(null);
@@ -119,7 +122,7 @@ const GenerateAttendanceQRScreen = ({ navigation }: any) => {
         end={{ x: 1, y: 1 }}
         style={styles.header}
       >
-        <Text style={styles.headerTitle}>✨ Generate Attendance QR</Text>
+        <Text style={styles.headerTitle}>âœ¨ Generate Attendance QR</Text>
         <Text style={styles.headerSubtitle}>Create QR codes for service check-in</Text>
       </LinearGradient>
 
@@ -128,25 +131,25 @@ const GenerateAttendanceQRScreen = ({ navigation }: any) => {
           {!qrData ? (
             <View style={styles.form}>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>📋 Service Type</Text>
+                <Text style={styles.label}>ðŸ“‹ Service Type</Text>
                 <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={formData.serviceType}
                     onValueChange={(value: string) => setFormData({ ...formData, serviceType: value })}
                     style={styles.picker}
                   >
-                    <Picker.Item label="🙏 Sunday Service" value="sunday_service" />
-                    <Picker.Item label="📖 Sunday School" value="sunday_school" />
-                    <Picker.Item label="🕯️ Tuesday Prayer Meeting" value="tuesday_prayer" />
-                    <Picker.Item label="📚 Thursday Bible Study" value="thursday_bible_study" />
+                    <Picker.Item label="ðŸ™ Sunday Service" value="sunday_service" />
+                    <Picker.Item label="ðŸ“– Sunday School" value="sunday_school" />
+                    <Picker.Item label="ðŸ•¯ï¸ Tuesday Prayer Meeting" value="tuesday_prayer" />
+                    <Picker.Item label="ðŸ“š Thursday Bible Study" value="thursday_bible_study" />
                     {!loadingEvents && upcomingEvents.map((event) => (
                       <Picker.Item 
                         key={`event_${event.id}`} 
-                        label={`🎉 ${event.title}`} 
+                        label={`ðŸŽ‰ ${event.title}`} 
                         value={`event_${event.id}`} 
                       />
                     ))}
-                    <Picker.Item label="📌 Other Service" value="other" />
+                    <Picker.Item label="ðŸ“Œ Other Service" value="other" />
                   </Picker>
                 </View>
                 {loadingEvents && (
@@ -155,7 +158,7 @@ const GenerateAttendanceQRScreen = ({ navigation }: any) => {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>📅 Service Date</Text>
+                <Text style={styles.label}>ðŸ“… Service Date</Text>
                 <View style={styles.dateCard}>
                   <Text style={styles.dateDisplay}>{new Date(formData.serviceDate).toLocaleDateString('en-US', { 
                     weekday: 'long', 
@@ -164,14 +167,14 @@ const GenerateAttendanceQRScreen = ({ navigation }: any) => {
                     day: 'numeric' 
                   })}</Text>
                 </View>
-                <Text style={styles.hint}>⏱️ QR code valid for 24 hours from generation</Text>
+                <Text style={styles.hint}>â±ï¸ QR code valid for 24 hours from generation</Text>
               </View>
 
               <LinearGradient
                 colors={['#e0f2fe', '#bfdbfe']}
                 style={styles.infoBox}
               >
-                <Text style={styles.infoTitle}>💡 How it works</Text>
+                <Text style={styles.infoTitle}>ðŸ’¡ How it works</Text>
                 <View style={styles.infoStep}>
                   <Text style={styles.stepNumber}>1</Text>
                   <Text style={styles.infoText}>Generate a QR code for the service</Text>
@@ -205,7 +208,7 @@ const GenerateAttendanceQRScreen = ({ navigation }: any) => {
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
                     <>
-                      <Text style={styles.buttonIcon}>✨</Text>
+                      <Text style={styles.buttonIcon}>âœ¨</Text>
                       <Text style={styles.buttonText}>Generate QR Code</Text>
                     </>
                   )}
@@ -219,8 +222,8 @@ const GenerateAttendanceQRScreen = ({ navigation }: any) => {
                 style={styles.qrCard}
               >
                 <View style={styles.qrHeader}>
-                  <Text style={styles.qrTitle}>🎯 {getServiceTypeLabel(qrData.serviceType)}</Text>
-                  <Text style={styles.qrDate}>📅 {new Date(qrData.serviceDate).toLocaleDateString('en-US', {
+                  <Text style={styles.qrTitle}>ðŸŽ¯ {getServiceTypeLabel(qrData.serviceType)}</Text>
+                  <Text style={styles.qrDate}>ðŸ“… {new Date(qrData.serviceDate).toLocaleDateString('en-US', {
                     weekday: 'long',
                     year: 'numeric',
                     month: 'long',
@@ -242,12 +245,12 @@ const GenerateAttendanceQRScreen = ({ navigation }: any) => {
 
                 <View style={styles.qrDetailsContainer}>
                   <View style={styles.qrInfo}>
-                    <Text style={styles.qrInfoLabel}>🔑 QR Code ID</Text>
+                    <Text style={styles.qrInfoLabel}>ðŸ”‘ QR Code ID</Text>
                     <Text style={styles.qrInfoValue}>{qrData.qrCode}</Text>
                   </View>
 
                   <View style={styles.qrInfo}>
-                    <Text style={styles.qrInfoLabel}>⏰ Valid Until</Text>
+                    <Text style={styles.qrInfoLabel}>â° Valid Until</Text>
                     <Text style={styles.qrInfoValue}>
                       {new Date(qrData.expiresAt).toLocaleString()}
                     </Text>
@@ -262,7 +265,7 @@ const GenerateAttendanceQRScreen = ({ navigation }: any) => {
                   end={{ x: 1, y: 0 }}
                   style={styles.buttonGradient}
                 >
-                  <Text style={styles.buttonIcon}>📤</Text>
+                  <Text style={styles.buttonIcon}>ðŸ“¤</Text>
                   <Text style={styles.buttonText}>Share QR Code</Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -274,14 +277,14 @@ const GenerateAttendanceQRScreen = ({ navigation }: any) => {
                   loadUpcomingEvents(); // Refresh events list
                 }}
               >
-                <Text style={styles.secondaryButtonText}>🔄 Generate Another</Text>
+                <Text style={styles.secondaryButtonText}>ðŸ”„ Generate Another</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.linkButton}
                 onPress={() => navigation.navigate('AttendanceReport')}
               >
-                <Text style={styles.linkButtonText}>📊 View Attendance Report →</Text>
+                <Text style={styles.linkButtonText}>ðŸ“Š View Attendance Report â†’</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -291,7 +294,7 @@ const GenerateAttendanceQRScreen = ({ navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 import api from '../services/api';
 
@@ -44,15 +45,15 @@ interface DepartmentPosition {
 }
 
 const DEPARTMENTS = [
-  { name: 'Church Leadership', icon: '⛪', color: '#8B4513' },
-  { name: 'Youth', icon: '⚡', color: '#6C5CE7' },
-  { name: 'Drama', icon: '🎭', color: '#4ECDC4' },
-  { name: 'Covenant Men', icon: '👔', color: '#2C3E50' },
-  { name: 'Prayer', icon: '🙏', color: '#A29BFE' },
-  { name: 'Media', icon: '📹', color: '#45B7D1' },
-  { name: 'Goodwomen', icon: '👗', color: '#E84393' },
-  { name: 'Choir', icon: '🎵', color: '#FF6B6B' },
-  { name: 'Welfare', icon: '❤️', color: '#FD79A8' },
+  { name: 'Church Leadership', icon: 'â›ª', color: '#8B4513' },
+  { name: 'Youth', icon: 'âš¡', color: '#6C5CE7' },
+  { name: 'Drama', icon: 'ðŸŽ­', color: '#4ECDC4' },
+  { name: 'Covenant Men', icon: 'ðŸ‘”', color: '#2C3E50' },
+  { name: 'Prayer', icon: 'ðŸ™', color: '#A29BFE' },
+  { name: 'Media', icon: 'ðŸ“¹', color: '#45B7D1' },
+  { name: 'Goodwomen', icon: 'ðŸ‘—', color: '#E84393' },
+  { name: 'Choir', icon: 'ðŸŽµ', color: '#FF6B6B' },
+  { name: 'Welfare', icon: 'â¤ï¸', color: '#FD79A8' },
 ];
 
 const DEPARTMENT_POSITIONS: { [key: string]: DepartmentPosition[] } = {
@@ -124,6 +125,8 @@ const DEPARTMENT_POSITIONS: { [key: string]: DepartmentPosition[] } = {
 };
 
 const DepartmentManagementScreen = ({ navigation }: any) => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -290,7 +293,7 @@ const DepartmentManagementScreen = ({ navigation }: any) => {
           style={styles.removeButton}
           onPress={() => handleRemoveExecutive(executive)}
         >
-          <Text style={styles.removeButtonText}>✕</Text>
+          <Text style={styles.removeButtonText}>âœ•</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -320,13 +323,13 @@ const DepartmentManagementScreen = ({ navigation }: any) => {
   if (!selectedDepartment) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <LinearGradient
+        {/* <LinearGradient
           colors={[colors.primary[600], colors.primary[800]]}
           style={styles.header}
         >
           <Text style={styles.headerTitle}>Department Management</Text>
           <Text style={styles.headerSubtitle}>Select a department to manage executives</Text>
-        </LinearGradient>
+        </LinearGradient> */}
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.departmentsGrid}>
@@ -349,7 +352,7 @@ const DepartmentManagementScreen = ({ navigation }: any) => {
           style={styles.backButton}
           onPress={() => setSelectedDepartment('')}
         >
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={styles.backButtonText}>â† Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
           {selectedDeptInfo?.icon} {selectedDepartment}
@@ -407,7 +410,7 @@ const DepartmentManagementScreen = ({ navigation }: any) => {
                 setShowAddModal(false);
                 resetForm();
               }}>
-                <Text style={styles.modalClose}>✕</Text>
+                <Text style={styles.modalClose}>âœ•</Text>
               </TouchableOpacity>
             </View>
 
@@ -507,7 +510,7 @@ const DepartmentManagementScreen = ({ navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.gray[50],

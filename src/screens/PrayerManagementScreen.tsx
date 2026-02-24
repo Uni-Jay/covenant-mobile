@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 import api from '../services/api';
 
@@ -30,6 +31,8 @@ interface PrayerRequest {
 }
 
 export default function PrayerManagementScreen() {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const { user } = useAuth();
   const [prayers, setPrayers] = useState<PrayerRequest[]>([]);
   const [filteredPrayers, setFilteredPrayers] = useState<PrayerRequest[]>([]);
@@ -38,8 +41,8 @@ export default function PrayerManagementScreen() {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'pending' | 'ongoing' | 'answered'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Check if user is admin or media department
-  const isAdminOrMedia = React.useMemo(() => {
+  // Check if user has prayer management access (Media or Prayer department)
+  const hasAccess = React.useMemo(() => {
     if (!user) return false;
     
     // Check role
@@ -47,12 +50,12 @@ export default function PrayerManagementScreen() {
       return true;
     }
     
-    // Check departments
+    // Check departments (case-insensitive, includes variations)
     if (user.departments) {
       const depts = Array.isArray(user.departments) ? user.departments : [];
       return depts.some((dept: any) => {
-        const deptName = typeof dept === 'string' ? dept : dept.name || '';
-        return deptName.toLowerCase().includes('media') || deptName.toLowerCase().includes('prayer');
+        const deptName = (typeof dept === 'string' ? dept : dept.name || '').toLowerCase();
+        return deptName.includes('media') || deptName.includes('prayer');
       });
     }
     
@@ -188,13 +191,13 @@ export default function PrayerManagementScreen() {
   };
 
   // Access control check
-  if (!isAdminOrMedia) {
+  if (!hasAccess) {
     return (
       <View style={styles.accessDenied}>
         <Text style={styles.accessDeniedIcon}>🔒</Text>
         <Text style={styles.accessDeniedTitle}>Access Restricted</Text>
         <Text style={styles.accessDeniedText}>
-          This section is only available to administrators and media department members.
+          This section is only available to Media and Prayer department members.
         </Text>
       </View>
     );
@@ -382,7 +385,7 @@ export default function PrayerManagementScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.gray[50],

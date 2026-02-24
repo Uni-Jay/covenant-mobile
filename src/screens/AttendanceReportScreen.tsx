@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,13 @@ import {
   TextInput
 } from 'react-native';
 import { attendanceService } from '../services';
-import { colors, primaryColor } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 const AttendanceReportScreen = () => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
+  const primaryColor = themeColors.primary[600];
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [report, setReport] = useState<any>(null);
@@ -153,7 +157,8 @@ const AttendanceReportScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
@@ -165,7 +170,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
   },
   header: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 20,
@@ -199,7 +204,7 @@ const styles = StyleSheet.create({
     margin: 5,
   },
   serviceButtonActive: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
   },
   serviceButtonText: {
     color: '#6B7280',
@@ -246,7 +251,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
     marginBottom: 5,
   },
   statLabel: {
@@ -270,7 +275,7 @@ const styles = StyleSheet.create({
   statRowValue: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
   },
   section: {
     padding: 20,

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,18 +14,20 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { eventsService } from '../services';
 import { Event } from '../types';
-import { colors } from '../theme/colors';
 import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 const { width } = Dimensions.get('window');
 
 const getImageUrl = (imageUrl: string) => {
-  const baseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
-  return `${baseUrl}${imageUrl}`;
+  if (!imageUrl) return '';
+  if (imageUrl.startsWith('http')) return imageUrl;
+  return `http://localhost:5000${imageUrl}`;
 };
 
 export default function EventsScreen({ navigation }: any) {
-  const { colors: themeColors } = useTheme();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [events, setEvents] = useState<Event[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -126,25 +128,31 @@ export default function EventsScreen({ navigation }: any) {
                 style={styles.cardGradient}
               >
                 <View style={styles.thumbnailContainer}>
-                  <Image
-                    source={{ uri: getImageUrl(event.imageUrl) }}
-                    style={styles.eventImage}
-                    resizeMode="cover"
-                  />
+                  {event.imageUrl ? (
+                    <Image
+                      source={{ uri: getImageUrl(event.imageUrl) }}
+                      style={styles.eventImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.eventImage, { backgroundColor: colors.gray[300], justifyContent: 'center', alignItems: 'center' }]}>
+                      <Text style={{ fontSize: 40 }}>📅</Text>
+                    </View>
+                  )}
                   <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.7)']}
                     style={styles.imageOverlay}
                   >
                     <View style={styles.categoryBadge}>
-                      <Text style={styles.categoryText}>{event.category}</Text>
+                      <Text style={styles.categoryText}>{event.category || 'Event'}</Text>
                     </View>
                   </LinearGradient>
                 </View>
                 
                 <View style={styles.eventContent}>
-                  <Text style={styles.eventTitle} numberOfLines={2}>{event.title}</Text>
+                  <Text style={styles.eventTitle} numberOfLines={2}>{event.title || 'Untitled Event'}</Text>
                   <Text style={styles.eventDescription} numberOfLines={2}>
-                    {event.description}
+                    {event.description || 'No description available'}
                   </Text>
                   
                   <View style={styles.metaContainer}>
@@ -161,16 +169,22 @@ export default function EventsScreen({ navigation }: any) {
                       </View>
                       <View style={styles.metaItem}>
                         <Text style={styles.metaIcon}>🕐</Text>
-                        <Text style={styles.metaText}>{event.time}</Text>
+                        <Text style={styles.metaText}>{event.time || 'TBA'}</Text>
                       </View>
                     </View>
                     <View style={styles.locationRow}>
                       <Text style={styles.metaIcon}>📍</Text>
-                      <Text style={styles.locationText} numberOfLines={1}>{event.location}</Text>
+                      <Text style={styles.locationText} numberOfLines={1}>{event.location || 'Location TBA'}</Text>
                     </View>
                   </View>
 
-                  <TouchableOpacity style={styles.registerButton}>
+                  <TouchableOpacity 
+                    style={styles.registerButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      navigation.navigate('EventDetail', { eventId: event.id });
+                    }}
+                  >
                     <LinearGradient
                       colors={[colors.secondary[600], colors.secondary[700]]}
                       style={styles.registerGradient}
@@ -189,7 +203,7 @@ export default function EventsScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.gray[50],

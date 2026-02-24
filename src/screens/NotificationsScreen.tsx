@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,17 +10,150 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { notificationService } from '../services';
-import { colors, primaryColor } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { notificationService, eventsService } from '../services';
+import { colors } from '../theme/colors';
+import api from '../services/api';
 
 const NotificationsScreen = ({ navigation }: any) => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     message: '',
     sendTo: 'all',
-    eventId: ''
+    eventName: '',
+    serviceType: 'Sunday Service',
+    venue: 'Church Auditorium',
+    eventTime: '',
+    eventDate: ''
   });
+
+  // Check if user has permission
+  useEffect(() => {
+    const isAdminOrMedia = user?.role === 'admin' || user?.role === 'media' || user?.role === 'media_head' ||
+      (user?.departments && user.departments.some((d: string) => d.toLowerCase() === 'media'));
+    if (!isAdminOrMedia) {
+      Alert.alert(
+        'Access Denied',
+        'You do not have permission to send notifications.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    }
+  }, [user, navigation]);
+
+  // Load departments and events
+  useEffect(() => {
+    loadDepartments();
+    loadEvents();
+  }, []);
+
+  const loadDepartments = async () => {
+    try {
+      const response = await api.get('/departments');
+      const deptNames = response.data.departments?.map((d: any) => d.name) || [];
+      setDepartments(deptNames);
+    } catch (error) {
+      console.error('Failed to load departments:', error);
+    }
+  };
+
+  const loadEvents = async () => {
+    try {
+      const data = await eventsService.getAll();
+      setEvents(data);
+    } catch (error) {
+      console.error('Failed to load events:', error);
+    }
+  };
+
+  // Auto-generate message when relevant fields change
+  useEffect(() => {
+    if (formData.title) {
+      generateMessage(formData.title, formData.eventName, formData.serviceType, formData.venue, formData.eventTime, formData.eventDate);
+    }
+  }, [formData.title, formData.eventName, formData.serviceType, formData.venue, formData.eventTime, formData.eventDate]);
+
+  const getServiceTime = (serviceType: string) => {
+    const serviceTimes: { [key: string]: string } = {
+      'Sunday Service': '9:00 AM - 11:00 AM',
+      'Tuesday Service': '5:00 PM - 7:00 PM',
+      'Wednesday Service': '5:00 PM - 7:00 PM',
+      'Friday Service': '5:00 PM - 7:00 PM',
+      'Prayer Meeting': '6:00 AM - 7:00 AM',
+      'Bible Study': '5:00 PM - 6:30 PM',
+      'Youth Service': '4:00 PM - 6:00 PM',
+      'Special Service': '9:00 AM - 12:00 PM',
+    };
+    return serviceTimes[serviceType] || '9:00 AM';
+  };
+
+  const generateMessage = (title: string, eventName: string, serviceType: string, venue: string, eventTime: string, eventDate: string) => {
+    // Find selected event details
+    const selectedEvent = events.find(e => e.title === eventName);
+    const time = eventTime || (selectedEvent ? new Date(selectedEvent.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : getServiceTime(serviceType));
+    const date = eventDate || (selectedEvent ? new Date(selectedEvent.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '');
+    const location = venue || (selectedEvent?.location) || 'Church Auditorium';
+
+    let message = `Dear Beloved in Christ,\n\n`;
+    message += `Grace and peace to you from God our Father and the Lord Jesus Christ.\n\n`;
+    message += `This is to inform you about:\n`;
+    message += `ðŸ“Œ ${title.toUpperCase()}\n\n`;
+    
+    message += `DETAILS:\n`;
+    message += `â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n`;
+    
+    if (serviceType && serviceType !== 'Other') {
+      message += `Service: ${serviceType}\n`;
+    }
+    
+    if (eventName) {
+      message += `Event: ${eventName}\n`;
+    }
+    
+    if (date) {
+      message += `Date: ${date}\n`;
+    }
+    
+    message += `Time: ${time}\n`;
+    message += `Venue: ${location}\n`;
+    message += `â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n\n`;
+    
+    message += `Your presence and participation will be highly valued as we gather together in fellowship and worship.\n\n`;
+    message += `"For where two or three gather in my name, there am I with them." - Matthew 18:20\n\n`;
+    message += `Should you have any questions or require further information, please do not hesitate to contact the church office.\n\n`;
+    message += `We look forward to seeing you!\n\n`;
+    message += `Blessings,\n`;
+    message += `Church Administration\n`;
+    message += `Word of Covenant Church`;
+    
+    setFormData(prev => ({ ...prev, message }));
+  };
+
+  const handleTitleChange = (text: string) => {
+    setFormData(prev => ({ ...prev, title: text }));
+  };
+
+  const handleEventChange = (eventName: string) => {
+    const selectedEvent = events.find(e => e.title === eventName);
+    if (selectedEvent) {
+      const eventDateTime = new Date(selectedEvent.date);
+      setFormData(prev => ({ 
+        ...prev, 
+        eventName,
+        eventTime: eventDateTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        eventDate: eventDateTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        venue: selectedEvent.location || prev.venue
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, eventName }));
+    }
+  };
 
   const handleSendNotification = async () => {
     if (!formData.title || !formData.message) {
@@ -39,7 +172,7 @@ const NotificationsScreen = ({ navigation }: any) => {
             setLoading(true);
             try {
               const result = await notificationService.sendEventReminder(
-                formData.eventId ? parseInt(formData.eventId) : 0,
+                0, // eventId - will be handled by backend based on event name
                 formData.message,
                 formData.title,
                 true, // sendEmail
@@ -50,7 +183,16 @@ const NotificationsScreen = ({ navigation }: any) => {
                 'Success!',
                 `Notification sent successfully!\n\nEmail: ${result.emailsSent}\nSMS: ${result.smsSent}`,
                 [{ text: 'OK', onPress: () => {
-                  setFormData({ title: '', message: '', sendTo: 'all', eventId: '' });
+                  setFormData({ 
+                    title: '', 
+                    message: '', 
+                    sendTo: 'all', 
+                    eventName: '', 
+                    serviceType: 'Sunday Service',
+                    venue: 'Church Auditorium',
+                    eventTime: '',
+                    eventDate: ''
+                  });
                 }}]
               );
             } catch (err: any) {
@@ -108,17 +250,88 @@ const NotificationsScreen = ({ navigation }: any) => {
             style={styles.input}
             placeholder="e.g., Sunday Service Reminder"
             value={formData.title}
-            onChangeText={(text) => setFormData({ ...formData, title: text })}
+            onChangeText={handleTitleChange}
           />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Service Type</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={formData.serviceType}
+              onValueChange={(value: string) => {
+                setFormData({ ...formData, serviceType: value });
+              }}
+              style={styles.picker}
+            >
+              <Picker.Item label="Sunday Service" value="Sunday Service" />
+              <Picker.Item label="Tuesday Service" value="Tuesday Service" />
+              <Picker.Item label="Wednesday Service" value="Wednesday Service" />
+              <Picker.Item label="Friday Service" value="Friday Service" />
+              <Picker.Item label="Special Service" value="Special Service" />
+              <Picker.Item label="Prayer Meeting" value="Prayer Meeting" />
+              <Picker.Item label="Bible Study" value="Bible Study" />
+              <Picker.Item label="Youth Service" value="Youth Service" />
+              <Picker.Item label="Other" value="Other" />
+            </Picker>
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Event (Optional)</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={formData.eventName}
+              onValueChange={handleEventChange}
+              style={styles.picker}
+            >
+              <Picker.Item label="No Event Selected" value="" />
+              {events.map((event) => (
+                <Picker.Item key={event.id} label={event.title} value={event.title} />
+              ))}
+            </Picker>
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Venue</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g., Church Auditorium"
+            value={formData.venue}
+            onChangeText={(text) => setFormData({ ...formData, venue: text })}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Time (Optional)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g., 9:00 AM - 11:00 AM"
+            value={formData.eventTime}
+            onChangeText={(text) => setFormData({ ...formData, eventTime: text })}
+          />
+          <Text style={styles.helpText}>Leave empty to use default service time</Text>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Date (Optional)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g., Sunday, February 9, 2026"
+            value={formData.eventDate}
+            onChangeText={(text) => setFormData({ ...formData, eventDate: text })}
+          />
+          <Text style={styles.helpText}>Leave empty to use event date or no date</Text>
         </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Message *</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Enter your message here..."
+            placeholder="Message will be auto-generated..."
             multiline
-            numberOfLines={6}
+            numberOfLines={12}
             value={formData.message}
             onChangeText={(text) => setFormData({ ...formData, message: text })}
           />
@@ -134,32 +347,20 @@ const NotificationsScreen = ({ navigation }: any) => {
               style={styles.picker}
             >
               <Picker.Item label="All Members" value="all" />
-              <Picker.Item label="Members Only" value="members" />
+              {departments.map((dept) => (
+                <Picker.Item key={dept} label={dept} value={dept} />
+              ))}
               <Picker.Item label="First-Timers Only" value="firstTimers" />
-              <Picker.Item label="Pastors" value="pastor" />
-              <Picker.Item label="Church Administrators" value="church_admin" />
-              <Picker.Item label="Media Team" value="media_head" />
             </Picker>
           </View>
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Event ID (Optional)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter event ID if this is for a specific event"
-            keyboardType="numeric"
-            value={formData.eventId}
-            onChangeText={(text) => setFormData({ ...formData, eventId: text })}
-          />
-        </View>
-
         <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>📬 Delivery Info</Text>
-          <Text style={styles.infoText}>• Emails sent to all members with email addresses</Text>
-          <Text style={styles.infoText}>• SMS sent to Nigerian phone numbers (+234)</Text>
-          <Text style={styles.infoText}>• Failed deliveries are queued for retry</Text>
-          <Text style={styles.infoText}>• Check notification queue for delivery status</Text>
+          <Text style={styles.infoTitle}>ðŸ“¬ Delivery Info</Text>
+          <Text style={styles.infoText}>â€¢ Emails sent to all members with email addresses</Text>
+          <Text style={styles.infoText}>â€¢ SMS sent to Nigerian phone numbers (+234)</Text>
+          <Text style={styles.infoText}>â€¢ Failed deliveries are queued for retry</Text>
+          <Text style={styles.infoText}>â€¢ Check notification queue for delivery status</Text>
         </View>
 
         <TouchableOpacity
@@ -186,20 +387,21 @@ const NotificationsScreen = ({ navigation }: any) => {
           style={styles.linkButton}
           onPress={() => navigation.navigate('NotificationQueue')}
         >
-          <Text style={styles.linkButtonText}>View Notification Queue →</Text>
+          <Text style={styles.linkButtonText}>View Notification Queue â†’</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
   );
 };
 
-const styles = StyleSheet.create({
+
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
   },
   header: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 20,
@@ -244,6 +446,12 @@ const styles = StyleSheet.create({
     marginTop: 5,
     textAlign: 'right',
   },
+  helpText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 5,
+    fontStyle: 'italic',
+  },
   pickerContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
@@ -271,7 +479,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   button: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     borderRadius: 8,
     padding: 18,
     alignItems: 'center',
@@ -292,10 +500,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
     borderWidth: 2,
-    borderColor: primaryColor,
+    borderColor: colors.primary[600],
   },
   secondaryButtonText: {
-    color: primaryColor,
+    color: colors.primary[600],
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -304,7 +512,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkButtonText: {
-    color: primaryColor,
+    color: colors.primary[600],
     fontSize: 16,
     fontWeight: '600',
   },

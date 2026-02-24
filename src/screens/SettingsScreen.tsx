@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,13 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../theme/colors';
 import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 import api from '../services/api';
 
 export default function SettingsScreen({ navigation }: any) {
   const { themeMode, setThemeMode, colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const [notifications, setNotifications] = useState(true);
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
@@ -371,7 +372,7 @@ export default function SettingsScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
   },

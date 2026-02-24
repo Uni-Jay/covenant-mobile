@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../services/api';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 const { width } = Dimensions.get('window');
 
@@ -32,10 +34,12 @@ interface Message {
 }
 
 const AIChatScreen = ({ navigation }: any) => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "✨ Welcome! I'm your Advanced AI Assistant powered by cutting-edge technology.\n\n🌟 I can help you with:\n\n📖 Biblical Analysis\n• Explain passages in Greek, Hebrew & Aramaic\n• Theological discussions & interpretations\n• Historical & cultural context\n\n🎨 Creative Generation\n• Generate stunning images\n• Create video concepts\n• Visual illustrations\n\n💡 Knowledge & Assistance\n• Answer any question\n• App navigation help\n• Sermon preparation\n• Study materials\n\n🚀 Just ask me anything - I'm here to help!",
+      text: "âœ¨ Welcome! I'm your Advanced AI Assistant powered by cutting-edge technology.\n\nðŸŒŸ I can help you with:\n\nðŸ“– Biblical Analysis\nâ€¢ Explain passages in Greek, Hebrew & Aramaic\nâ€¢ Theological discussions & interpretations\nâ€¢ Historical & cultural context\n\nðŸŽ¨ Creative Generation\nâ€¢ Generate stunning images\nâ€¢ Create video concepts\nâ€¢ Visual illustrations\n\nðŸ’¡ Knowledge & Assistance\nâ€¢ Answer any question\nâ€¢ App navigation help\nâ€¢ Sermon preparation\nâ€¢ Study materials\n\nðŸš€ Just ask me anything - I'm here to help!",
       sender: 'ai',
       timestamp: new Date(),
       type: 'text',
@@ -156,7 +160,7 @@ const AIChatScreen = ({ navigation }: any) => {
               colors={['#667eea', '#764ba2']}
               style={styles.avatarGradient}
             >
-              <Text style={styles.avatarText}>🤖</Text>
+              <Text style={styles.avatarText}>ðŸ¤–</Text>
             </LinearGradient>
           </Animated.View>
           <View style={styles.messageBubble}>
@@ -185,7 +189,7 @@ const AIChatScreen = ({ navigation }: any) => {
               colors={['#667eea', '#764ba2']}
               style={styles.avatarGradient}
             >
-              <Text style={styles.avatarText}>🤖</Text>
+              <Text style={styles.avatarText}>ðŸ¤–</Text>
             </LinearGradient>
           </View>
         )}
@@ -229,7 +233,7 @@ const AIChatScreen = ({ navigation }: any) => {
               {message.videoUrl && (
                 <View style={styles.mediaContainer}>
                   <View style={styles.videoPlaceholder}>
-                    <Text style={styles.videoIcon}>▶️</Text>
+                    <Text style={styles.videoIcon}>â–¶ï¸</Text>
                     <Text style={styles.videoText}>Video generated</Text>
                   </View>
                 </View>
@@ -249,7 +253,7 @@ const AIChatScreen = ({ navigation }: any) => {
               colors={['#10b981', '#059669']}
               style={styles.avatarGradient}
             >
-              <Text style={styles.avatarText}>👤</Text>
+              <Text style={styles.avatarText}>ðŸ‘¤</Text>
             </LinearGradient>
           </View>
         )}
@@ -266,10 +270,10 @@ const AIChatScreen = ({ navigation }: any) => {
         style={styles.header}
       >
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={styles.backIcon}>â†</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>✨ AI Assistant</Text>
+          <Text style={styles.headerTitle}>âœ¨ AI Assistant</Text>
           <Text style={styles.headerSubtitle}>Powered by Advanced AI</Text>
         </View>
         <View style={styles.headerRight}>
@@ -300,7 +304,7 @@ const AIChatScreen = ({ navigation }: any) => {
                 colors={['#667eea', '#764ba2']}
                 style={styles.quickActionGradient}
               >
-                <Text style={styles.quickActionIcon}>📖</Text>
+                <Text style={styles.quickActionIcon}>ðŸ“–</Text>
                 <Text style={styles.quickActionText}>Greek Text</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -312,7 +316,7 @@ const AIChatScreen = ({ navigation }: any) => {
                 colors={['#f093fb', '#f5576c']}
                 style={styles.quickActionGradient}
               >
-                <Text style={styles.quickActionIcon}>🎨</Text>
+                <Text style={styles.quickActionIcon}>ðŸŽ¨</Text>
                 <Text style={styles.quickActionText}>Generate Image</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -324,7 +328,7 @@ const AIChatScreen = ({ navigation }: any) => {
                 colors={['#4facfe', '#00f2fe']}
                 style={styles.quickActionGradient}
               >
-                <Text style={styles.quickActionIcon}>🎬</Text>
+                <Text style={styles.quickActionIcon}>ðŸŽ¬</Text>
                 <Text style={styles.quickActionText}>Video Concept</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -336,7 +340,7 @@ const AIChatScreen = ({ navigation }: any) => {
                 colors={['#43e97b', '#38f9d7']}
                 style={styles.quickActionGradient}
               >
-                <Text style={styles.quickActionIcon}>⛪</Text>
+                <Text style={styles.quickActionIcon}>â›ª</Text>
                 <Text style={styles.quickActionText}>Theology</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -348,7 +352,7 @@ const AIChatScreen = ({ navigation }: any) => {
                 colors={['#fa709a', '#fee140']}
                 style={styles.quickActionGradient}
               >
-                <Text style={styles.quickActionIcon}>🧭</Text>
+                <Text style={styles.quickActionIcon}>ðŸ§­</Text>
                 <Text style={styles.quickActionText}>Navigation</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -393,7 +397,7 @@ const AIChatScreen = ({ navigation }: any) => {
                 {isTyping ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.sendIcon}>➤</Text>
+                  <Text style={styles.sendIcon}>âž¤</Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>
@@ -404,7 +408,7 @@ const AIChatScreen = ({ navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',

@@ -45,10 +45,11 @@
     "web": {
       "favicon": "./assets/images/Word of Covenant Logo.png"
     },
+    "scheme": "com.wordofcovenant.app",
     "plugins": [
-      "expo-web-browser",
       "expo-audio",
-      "expo-system-ui"
+      "expo-system-ui",
+      "@react-native-google-signin/google-signin"
     ]
   }
 }

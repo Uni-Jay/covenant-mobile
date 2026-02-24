@@ -1,3 +1,5 @@
+﻿
+import { useTheme } from '../context/ThemeContext';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -14,6 +16,9 @@ import { colors, primaryColor } from '../theme/colors';
 const { width } = Dimensions.get('window');
 
 const GrowthReportScreen = () => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
+  const primaryColor = themeColors.primary[600];
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<any>(null);
@@ -75,7 +80,7 @@ const GrowthReportScreen = () => {
                 </Text>
                 {stats.memberGrowthRate !== undefined && (
                   <Text style={[styles.growthRate, { color: stats.memberGrowthRate >= 0 ? '#10B981' : '#EF4444' }]}>
-                    {stats.memberGrowthRate >= 0 ? '↑' : '↓'} {Math.abs(stats.memberGrowthRate)}%
+                    {stats.memberGrowthRate >= 0 ? 'â†‘' : 'â†“'} {Math.abs(stats.memberGrowthRate)}%
                   </Text>
                 )}
               </View>
@@ -99,7 +104,7 @@ const GrowthReportScreen = () => {
                   <Text style={styles.conversionLabel}>Total First-Timers</Text>
                 </View>
                 <View style={styles.conversionArrow}>
-                  <Text style={styles.arrowText}>→</Text>
+                  <Text style={styles.arrowText}>â†’</Text>
                 </View>
                 <View style={styles.conversionStat}>
                   <Text style={styles.conversionValue}>{stats.convertedMembers || 0}</Text>
@@ -174,7 +179,7 @@ const GrowthReportScreen = () => {
                     <Text style={styles.givingMonth}>{month.month}</Text>
                     <Text style={styles.givingCount}>{month.donations} donations</Text>
                   </View>
-                  <Text style={styles.givingAmount}>₦{month.total.toLocaleString()}</Text>
+                  <Text style={styles.givingAmount}>â‚¦{month.total.toLocaleString()}</Text>
                 </View>
               ))}
             </View>
@@ -236,7 +241,7 @@ const GrowthReportScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
@@ -248,7 +253,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
   },
   header: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 20,
@@ -320,7 +325,7 @@ const styles = StyleSheet.create({
   conversionValue: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
     marginBottom: 5,
   },
   conversionLabel: {
@@ -349,7 +354,7 @@ const styles = StyleSheet.create({
   conversionRateValue: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
   },
   chartContainer: {
     flexDirection: 'row',
@@ -411,7 +416,7 @@ const styles = StyleSheet.create({
   monthValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
   },
   givingCard: {
     backgroundColor: '#FFFFFF',
@@ -438,7 +443,7 @@ const styles = StyleSheet.create({
   givingAmount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
   },
   deptCard: {
     backgroundColor: '#FFFFFF',
@@ -471,7 +476,7 @@ const styles = StyleSheet.create({
   deptValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
   },
   serviceCard: {
     backgroundColor: '#FFFFFF',
@@ -501,7 +506,7 @@ const styles = StyleSheet.create({
   serviceValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
     marginBottom: 2,
   },
   serviceLabel: {

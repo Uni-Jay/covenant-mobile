@@ -9,7 +9,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
-  googleLogin: (idToken: string, userInfo: any) => Promise<void>;
+  googleLogin: (response: any) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
 }
@@ -67,9 +67,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const googleLogin = async (idToken: string, userInfo: any) => {
+  const googleLogin = async (response: any) => {
     try {
-      const response = await googleAuthService.processAuthResponse(idToken, userInfo);
       await AsyncStorage.setItem('token', response.token);
       await AsyncStorage.setItem('user', JSON.stringify(response.user));
       setUser(response.user);

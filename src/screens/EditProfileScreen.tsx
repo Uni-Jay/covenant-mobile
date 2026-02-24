@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,30 +8,108 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { authService } from '../services';
-import { colors } from '../theme/colors';
+
+// Base server URL for serving uploaded files
+const SERVER_BASE = Platform.OS === 'android' ? 'http://localhost:5000' : 'http://localhost:5000';
+
+function getPhotoUrl(path?: string | null): string | null {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  return SERVER_BASE + path;
+}
 
 export default function EditProfileScreen({ navigation }: any) {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const { user, updateUser } = useAuth();
-  
-  // Initialize fullName from either fullName or firstName + lastName
-  const initialFullName = user?.fullName || 
+
+  const initialFullName = user?.fullName ||
     (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || '');
-  
+
   const [fullName, setFullName] = useState(initialFullName);
   const [phone, setPhone] = useState(user?.phone || user?.phoneNumber || '');
   const [address, setAddress] = useState(user?.address || '');
   const [gender, setGender] = useState<'male' | 'female' | undefined>(user?.gender);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null);
+  const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(
+    (user as any)?.photo || user?.profileImage || null
+  );
+
+  const displayPhotoUri = localPhotoUri || getPhotoUrl(uploadedPhotoUrl);
+
+  const uploadPhoto = async (uri: string) => {
+    setIsUploadingPhoto(true);
+    try {
+      const photoUrl = await authService.uploadProfilePhoto(uri);
+      setUploadedPhotoUrl(photoUrl);
+      updateUser({ ...user, photo: photoUrl } as any);
+      Alert.alert('Success', 'Profile photo updated!');
+    } catch (error: any) {
+      console.error('Photo upload error:', error);
+      Alert.alert('Upload Failed', error.response?.data?.message || 'Could not upload photo. Please try again.');
+      setLocalPhotoUri(null);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow access to your photo library to upload a profile picture.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    const uri = result.assets[0].uri;
+    setLocalPhotoUri(uri);
+    await uploadPhoto(uri);
+  };
+
+  const handleTakePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow camera access to take a profile picture.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    const uri = result.assets[0].uri;
+    setLocalPhotoUri(uri);
+    await uploadPhoto(uri);
+  };
+
+  const handleChangePhoto = () => {
+    Alert.alert('Change Profile Photo', 'Choose an option', [
+      { text: 'Take Photo', onPress: handleTakePhoto },
+      { text: 'Choose from Library', onPress: handlePickImage },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
 
   const handleSave = async () => {
     if (!fullName.trim()) {
       Alert.alert('Error', 'Please enter your full name');
       return;
     }
-
     setIsLoading(true);
     try {
       const [first, ...lastParts] = fullName.trim().split(' ');
@@ -42,10 +120,7 @@ export default function EditProfileScreen({ navigation }: any) {
         address,
         gender,
       });
-
-      // Update user in context
       updateUser(response);
-
       Alert.alert('Success', 'Profile updated successfully', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
@@ -61,13 +136,26 @@ export default function EditProfileScreen({ navigation }: any) {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {fullName.charAt(0) || 'U'}
+          <TouchableOpacity onPress={handleChangePhoto} disabled={isUploadingPhoto} style={styles.avatarWrapper}>
+            {displayPhotoUri ? (
+              <Image source={{ uri: displayPhotoUri }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{fullName.charAt(0).toUpperCase() || 'U'}</Text>
+              </View>
+            )}
+            <View style={styles.cameraOverlay}>
+              {isUploadingPhoto ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.cameraIcon}>📷</Text>
+              )}
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.changePhotoButton} onPress={handleChangePhoto} disabled={isUploadingPhoto}>
+            <Text style={styles.changePhotoText}>
+              {isUploadingPhoto ? 'Uploading...' : 'Change Photo'}
             </Text>
-          </View>
-          <TouchableOpacity style={styles.changePhotoButton}>
-            <Text style={styles.changePhotoText}>Change Photo</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -185,7 +273,7 @@ export default function EditProfileScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -198,6 +286,13 @@ const styles = StyleSheet.create({
   avatarContainer: {
     alignItems: 'center',
   },
+  avatarWrapper: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 16,
+    position: 'relative',
+  },
   avatar: {
     width: 100,
     height: 100,
@@ -207,12 +302,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 4,
     borderColor: colors.primary[200],
-    marginBottom: 16,
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 4,
+    borderColor: colors.primary[200],
   },
   avatarText: {
     fontSize: 48,
     fontWeight: 'bold',
     color: colors.primary[600],
+  },
+  cameraOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    borderRadius: 16,
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
+  cameraIcon: {
+    fontSize: 16,
   },
   changePhotoButton: {
     paddingHorizontal: 16,

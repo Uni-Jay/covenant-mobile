@@ -1,3 +1,5 @@
+﻿
+import { useTheme } from '../context/ThemeContext';
 import React, { useState } from 'react';
 import {
   View,
@@ -10,6 +12,8 @@ import {
 import { colors } from '../theme/colors';
 
 export default function LiveStreamScreen() {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const [isLive, setIsLive] = useState(false);
 
   return (
@@ -149,7 +153,7 @@ export default function LiveStreamScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

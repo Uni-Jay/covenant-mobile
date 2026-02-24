@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,13 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { attendanceService } from '../services';
 import { useAuth } from '../context/AuthContext';
-import { colors, primaryColor } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 const AttendanceScreen = ({ navigation }: any) => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
+  const primaryColor = themeColors.primary[600];
   const { user } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
@@ -59,7 +63,7 @@ const AttendanceScreen = ({ navigation }: any) => {
       const result = await attendanceService.checkIn(qrCode, serviceType);
 
       Alert.alert(
-        '✅ Check-in Successful',
+        'âœ… Check-in Successful',
         `You have been checked in for ${serviceType.replace('_', ' ')}!`,
         [
           {
@@ -126,11 +130,11 @@ const AttendanceScreen = ({ navigation }: any) => {
     <View key={index} style={styles.attendanceItem}>
       <View style={styles.attendanceIcon}>
         <Text style={styles.attendanceIconText}>
-          {item.service_type === 'sunday_service' ? '⛪' : 
-           item.service_type === 'sunday_school' ? '📚' :
-           item.service_type === 'tuesday_prayer' ? '🙏' :
-           item.service_type === 'thursday_bible_study' ? '📖' :
-           item.service_type === 'vigil' ? '🌙' : '✅'}
+          {item.service_type === 'sunday_service' ? 'â›ª' : 
+           item.service_type === 'sunday_school' ? 'ðŸ“š' :
+           item.service_type === 'tuesday_prayer' ? 'ðŸ™' :
+           item.service_type === 'thursday_bible_study' ? 'ðŸ“–' :
+           item.service_type === 'vigil' ? 'ðŸŒ™' : 'âœ…'}
         </Text>
       </View>
       <View style={styles.attendanceContent}>
@@ -231,7 +235,7 @@ const AttendanceScreen = ({ navigation }: any) => {
           style={styles.checkInButton}
           onPress={requestCameraPermission}
         >
-          <Text style={styles.checkInIcon}>📷</Text>
+          <Text style={styles.checkInIcon}>ðŸ“·</Text>
           <Text style={styles.checkInText}>Scan QR to Check In</Text>
         </TouchableOpacity>
       </View>
@@ -243,7 +247,7 @@ const AttendanceScreen = ({ navigation }: any) => {
           myAttendance.map((item, index) => renderAttendanceItem(item, index))
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📋</Text>
+            <Text style={styles.emptyIcon}>ðŸ“‹</Text>
             <Text style={styles.emptyText}>No attendance records yet</Text>
             <Text style={styles.emptySubtext}>Start checking in to see your history</Text>
           </View>
@@ -258,19 +262,19 @@ const AttendanceScreen = ({ navigation }: any) => {
             style={styles.adminButton}
             onPress={() => navigation.navigate('AttendanceReport')}
           >
-            <Text style={styles.adminButtonText}>📊 View Reports</Text>
+            <Text style={styles.adminButtonText}>ðŸ“Š View Reports</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.adminButton}
             onPress={() => navigation.navigate('GenerateAttendanceQR')}
           >
-            <Text style={styles.adminButtonText}>🎫 Generate Service QR</Text>
+            <Text style={styles.adminButtonText}>ðŸŽ« Generate Service QR</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.adminButton}
             onPress={() => navigation.navigate('ManualAttendance')}
           >
-            <Text style={styles.adminButtonText}>✏️ Mark Manual Attendance</Text>
+            <Text style={styles.adminButtonText}>âœï¸ Mark Manual Attendance</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -280,7 +284,8 @@ const AttendanceScreen = ({ navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
+
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
@@ -293,7 +298,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   header: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 20,
@@ -331,7 +336,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
     marginBottom: 5,
   },
   statLabel: {
@@ -344,7 +349,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   checkInButton: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     borderRadius: 12,
     padding: 20,
     flexDirection: 'row',
@@ -390,7 +395,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: primaryColor + '20',
+    backgroundColor: colors.primary[600] + '20',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
@@ -504,7 +509,7 @@ const styles = StyleSheet.create({
     margin: 5,
   },
   serviceButtonActive: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
   },
   serviceButtonText: {
     color: '#FFFFFF',
@@ -514,7 +519,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   button: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 8,
@@ -528,7 +533,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   cancelButtonText: {
-    color: primaryColor,
+    color: colors.primary[600],
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',

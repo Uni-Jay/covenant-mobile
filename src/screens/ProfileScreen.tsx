@@ -1,4 +1,5 @@
-import React from 'react';
+﻿import React from 'react';
+import { useNavigation } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -15,10 +16,18 @@ import { colors } from '../theme/colors';
 
 const isSuperAdmin = (user: any) => {
   if (!user) return false;
-  const departments = user.departments || [];
   
   // Anyone with Media department gets super admin access
-  return departments.some((d: string) => d.toLowerCase() === 'media');
+  if (user.departments && Array.isArray(user.departments)) {
+    return user.departments.some((dept: any) => {
+      // Handle both string and object formats
+      const deptName = (typeof dept === 'string' ? dept : dept?.name || '').toLowerCase().trim();
+      const hasMedia = deptName.includes('media');
+      return hasMedia;
+    });
+  }
+  
+  return false;
 };
 
 const isMediaOrAdmin = (user: any) => {
@@ -36,9 +45,30 @@ const isMediaOrAdmin = (user: any) => {
   );
 };
 
-export default function ProfileScreen({ navigation }: any) {
+export default function ProfileScreen() {
+  const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
   const { themeMode, setThemeMode, colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
+
+  // Debug: Log user departments for troubleshooting
+  React.useEffect(() => {
+    if (user) {
+      const deptArray = Array.isArray(user.departments) ? user.departments : [];
+      const deptNames = deptArray.map((d: any) => typeof d === 'string' ? d : d?.name || 'unknown');
+      
+      console.log('🔍 ProfileScreen - User Access Check:', {
+        email: user.email,
+        role: user.role,
+        departments: user.departments,
+        departmentsArray: deptNames,
+        departmentsIsArray: Array.isArray(user.departments),
+        departmentsLength: deptArray.length,
+        hasMediaDept: isSuperAdmin(user),
+        isMediaOrAdmin: isMediaOrAdmin(user)
+      });
+    }
+  }, [user]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -60,7 +90,7 @@ export default function ProfileScreen({ navigation }: any) {
   // Define menu items with role restrictions
   const allMenuItems = [
     { icon: '👤', title: 'Edit Profile', route: 'EditProfile', requiresAdmin: false },
-    { icon: '🔔', title: 'Notifications', route: 'Notifications', requiresAdmin: false },
+    { icon: '🔔', title: 'Notifications', route: 'NotificationInbox', requiresAdmin: false },
     { icon: '📅', title: 'Events', route: 'Events', requiresAdmin: false },
     { icon: '✅', title: 'Scan Attendance', route: 'Attendance', requiresAdmin: false },
     { icon: '👥', title: 'First Timers', route: 'FirstTimers', requiresAdmin: false },
@@ -73,6 +103,9 @@ export default function ProfileScreen({ navigation }: any) {
     { icon: '❓', title: 'Help & Support', route: 'Support', requiresAdmin: false },
     
     // Admin and Media Department Features
+    { icon: '📢', title: 'Send Notifications', route: 'Notifications', requiresAdminOrMedia: true },
+    { icon: '📅', title: 'Manage Events', route: 'EventManagement', requiresAdminOrMedia: true },
+    { icon: '🎙️', title: 'Manage Sermons', route: 'SermonManagement', requiresAdminOrMedia: true },
     { icon: '✅', title: 'Approve Donations', route: 'DonationApproval', requiresAdminOrMedia: true },
     { icon: '📊', title: 'Donation Reports', route: 'DonationReports', requiresAdminOrMedia: true },
     { icon: '📄', title: 'Church Documents', route: 'ChurchDocuments', requiresAdminOrMedia: true },
@@ -81,6 +114,7 @@ export default function ProfileScreen({ navigation }: any) {
     // Super Admin Only Features
     { icon: '📊', title: 'Dashboard', route: 'Dashboard', requiresAdmin: true },
     { icon: '🏢', title: 'Department Management', route: 'DepartmentManagement', requiresAdmin: true },
+    { icon: '👥', title: 'User Management', route: 'UserManagement', requiresAdmin: true },
     { icon: '📅', title: 'My Events', route: 'MyEvents', requiresAdmin: true },
     { icon: '🙏', title: 'My Prayer Requests', route: 'MyPrayers', requiresAdmin: false },
     { icon: '📋', title: 'Attendance Report', route: 'AttendanceReport', requiresAdmin: true },
@@ -93,8 +127,8 @@ export default function ProfileScreen({ navigation }: any) {
     { icon: '📈', title: 'Growth Report', route: 'GrowthReport', requiresAdmin: true },
   ];
 
-  // Check if user is in Media department
-  const isMediaMember = React.useMemo(() => {
+  // Check if user is in Media or Prayer department
+  const isMediaOrPrayerMember = React.useMemo(() => {
     if (!user) return false;
     
     // Check role
@@ -102,12 +136,11 @@ export default function ProfileScreen({ navigation }: any) {
       return true;
     }
     
-    // Check departments
-    if (user.departments) {
-      const depts = Array.isArray(user.departments) ? user.departments : [];
-      return depts.some((dept: any) => {
-        const deptName = typeof dept === 'string' ? dept : dept.name || '';
-        return deptName.toLowerCase().includes('media') || deptName.toLowerCase().includes('prayer');
+    // Check departments (case-insensitive, trimmed)
+    if (user.departments && Array.isArray(user.departments)) {
+      return user.departments.some((dept: any) => {
+        const deptName = (typeof dept === 'string' ? dept : dept?.name || '').toLowerCase().trim();
+        return deptName.includes('media') || deptName.includes('prayer');
       });
     }
     
@@ -126,7 +159,7 @@ export default function ProfileScreen({ navigation }: any) {
     
     // Admin or Media department items
     if (item.requiresAdminOrMedia) {
-      return isMediaOrAdmin(user) || isMediaMember;
+      return isMediaOrAdmin(user) || isMediaOrPrayerMember;
     }
     
     return false;
@@ -146,14 +179,21 @@ export default function ProfileScreen({ navigation }: any) {
         <View style={styles.decorativeCircle2} />
         
         <View style={styles.avatarContainer}>
-          <LinearGradient
-            colors={['#FFFFFF', '#F3F4F6']}
-            style={styles.avatar}
-          >
-            <Text style={styles.avatarText}>
-              {user?.fullName?.charAt(0) || 'U'}
-            </Text>
-          </LinearGradient>
+          {user?.photo ? (
+            <Image
+              source={{ uri: user.photo.startsWith('http') ? user.photo : `http://localhost:5000${user.photo}` }}
+              style={[styles.avatar, { borderRadius: 60 }]}
+            />
+          ) : (
+            <LinearGradient
+              colors={['#FFFFFF', '#F3F4F6']}
+              style={styles.avatar}
+            >
+              <Text style={styles.avatarText}>
+                {user?.fullName?.charAt(0) || 'U'}
+              </Text>
+            </LinearGradient>
+          )}
           <View style={styles.avatarRing} />
         </View>
         <Text style={styles.name}>{user?.fullName || 'User'}</Text>
@@ -237,7 +277,7 @@ export default function ProfileScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
   },

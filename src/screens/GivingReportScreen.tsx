@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,13 @@ import {
   Dimensions
 } from 'react-native';
 import { dashboardService } from '../services';
-import { colors, primaryColor } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 const GivingReportScreen = () => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
+  const primaryColor = themeColors.primary[600];
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<any>(null);
@@ -38,7 +42,7 @@ const GivingReportScreen = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return `₦${amount.toLocaleString()}`;
+    return `â‚¦${amount.toLocaleString()}`;
   };
 
   if (loading) {
@@ -191,7 +195,8 @@ const GivingReportScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
@@ -203,7 +208,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
   },
   header: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 20,
@@ -273,7 +278,7 @@ const styles = StyleSheet.create({
   typeAmount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
   },
   donorCard: {
     backgroundColor: '#FFFFFF',
@@ -287,7 +292,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: primaryColor + '20',
+    backgroundColor: colors.primary[600] + '20',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
@@ -295,7 +300,7 @@ const styles = StyleSheet.create({
   rankNumber: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
   },
   donorInfo: {
     flex: 1,
@@ -313,7 +318,7 @@ const styles = StyleSheet.create({
   donorAmount: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
   },
   trendCard: {
     backgroundColor: '#FFFFFF',
@@ -343,7 +348,7 @@ const styles = StyleSheet.create({
   trendAmount: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
     marginBottom: 8,
   },
   trendBarContainer: {
@@ -381,7 +386,7 @@ const styles = StyleSheet.create({
   methodAmount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
   },
 });
 

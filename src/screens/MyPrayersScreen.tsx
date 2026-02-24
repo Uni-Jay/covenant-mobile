@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 import api from '../services/api';
 
@@ -28,6 +29,8 @@ interface PrayerRequest {
 }
 
 export default function MyPrayersScreen({ navigation }: any) {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const { user } = useAuth();
   const [prayers, setPrayers] = useState<PrayerRequest[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -249,7 +252,7 @@ export default function MyPrayersScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

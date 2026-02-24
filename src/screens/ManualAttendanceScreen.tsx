@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,13 @@ import {
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { attendanceService } from '../services';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 import api from '../services/api';
-import { colors, primaryColor } from '../theme/colors';
 
 const ManualAttendanceScreen = ({ navigation }: any) => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,7 +40,7 @@ const ManualAttendanceScreen = ({ navigation }: any) => {
   const searchMembers = async () => {
     setSearching(true);
     try {
-      const response = await api.get(`/api/users/search?q=${searchQuery}`);
+      const response = await api.get(`/users/search?q=${searchQuery}`);
       setMembers(response.data);
     } catch (err) {
       console.error('Search error:', err);
@@ -206,7 +209,7 @@ const ManualAttendanceScreen = ({ navigation }: any) => {
         </View>
 
         <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>📝 Manual Attendance</Text>
+          <Text style={styles.infoTitle}>ðŸ“ Manual Attendance</Text>
           <Text style={styles.infoText}>
             Use this feature to mark attendance for members who couldn't scan QR codes or attended
             without their phones.
@@ -229,20 +232,21 @@ const ManualAttendanceScreen = ({ navigation }: any) => {
           style={styles.linkButton}
           onPress={() => navigation.navigate('AttendanceReport')}
         >
-          <Text style={styles.linkButtonText}>View Attendance Report →</Text>
+          <Text style={styles.linkButtonText}>View Attendance Report â†’</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
   );
 };
 
-const styles = StyleSheet.create({
+
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
   },
   header: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 20,
@@ -315,19 +319,19 @@ const styles = StyleSheet.create({
   },
   roleTag: {
     fontSize: 12,
-    color: primaryColor,
-    backgroundColor: primaryColor + '20',
+    color: colors.primary[600],
+    backgroundColor: colors.primary[600] + '20',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
   },
   selectedMemberCard: {
-    backgroundColor: primaryColor + '10',
+    backgroundColor: colors.primary[600] + '10',
     borderRadius: 12,
     padding: 20,
     marginTop: 10,
     borderWidth: 2,
-    borderColor: primaryColor,
+    borderColor: colors.primary[600],
   },
   selectedLabel: {
     fontSize: 12,
@@ -351,7 +355,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   changeButtonText: {
-    color: primaryColor,
+    color: colors.primary[600],
     fontSize: 14,
     fontWeight: '600',
   },
@@ -399,7 +403,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   button: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     borderRadius: 8,
     padding: 18,
     alignItems: 'center',
@@ -418,7 +422,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkButtonText: {
-    color: primaryColor,
+    color: colors.primary[600],
     fontSize: 16,
     fontWeight: '600',
   },

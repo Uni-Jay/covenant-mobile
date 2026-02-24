@@ -1,3 +1,5 @@
+﻿
+import { useTheme } from '../context/ThemeContext';
 import React, { useState } from 'react';
 import {
   View,
@@ -12,6 +14,8 @@ import {
 import { colors } from '../theme/colors';
 
 export default function HelpSupportScreen({ navigation }: any) {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -240,7 +244,7 @@ export default function HelpSupportScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

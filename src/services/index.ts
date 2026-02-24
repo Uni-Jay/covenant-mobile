@@ -53,6 +53,19 @@ export const authService = {
     return response.data.user || response.data;
   },
 
+  // Upload profile photo
+  uploadProfilePhoto: async (imageUri: string): Promise<string> => {
+    const formData = new FormData();
+    const filename = imageUri.split('/').pop() || 'photo.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
+    formData.append('photo', { uri: imageUri, name: filename, type } as any);
+    const response = await api.post('/auth/profile/photo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.photoUrl;
+  },
+
   // Request password reset
   forgotPassword: async (email: string): Promise<void> => {
     await api.post('/auth/forgot-password', { email });
@@ -75,8 +88,23 @@ export const eventsService = {
     return response.data;
   },
   
-  register: async (eventId: number, data: any) => {
-    const response = await api.post(`/events/${eventId}/register`, data);
+  register: async (eventId: number, data?: any) => {
+    const response = await api.post(`/events/${eventId}/register`, data || {});
+    return response.data;
+  },
+  
+  create: async (data: any) => {
+    const response = await api.post('/events', data);
+    return response.data;
+  },
+  
+  update: async (id: number, data: any) => {
+    const response = await api.put(`/events/${id}`, data);
+    return response.data;
+  },
+  
+  delete: async (id: number) => {
+    const response = await api.delete(`/events/${id}`);
     return response.data;
   },
 };
@@ -94,6 +122,21 @@ export const sermonsService = {
   
   getByCategory: async (category: string) => {
     const response = await api.get(`/sermons?category=${category}`);
+    return response.data;
+  },
+  
+  create: async (data: any) => {
+    const response = await api.post('/sermons', data);
+    return response.data;
+  },
+  
+  update: async (id: number, data: any) => {
+    const response = await api.put(`/sermons/${id}`, data);
+    return response.data;
+  },
+  
+  delete: async (id: number) => {
+    const response = await api.delete(`/sermons/${id}`);
     return response.data;
   },
 };

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,14 @@ import {
   Alert,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { eventsService } from '../services';
-import { colors } from '../theme/colors';
 import { Event } from '../types';
+import { colors } from '../theme/colors';
 
 export default function MyEventsScreen({ navigation }: any) {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const { user } = useAuth();
   const [myEvents, setMyEvents] = useState<Event[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -138,7 +141,7 @@ export default function MyEventsScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

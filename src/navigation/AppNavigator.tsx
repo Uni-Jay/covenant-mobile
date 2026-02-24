@@ -1,8 +1,10 @@
 import React from 'react';
 import { Text, View, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, NavigationContainerRef, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 
@@ -14,7 +16,10 @@ import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import FeedScreen from '../screens/FeedScreen';
 import EventsScreen from '../screens/EventsScreen';
+import EventDetailScreen from '../screens/EventDetailScreen';
+import EventManagementScreen from '../screens/EventManagementScreen';
 import SermonsScreen from '../screens/SermonsScreen';
+import SermonManagementScreen from '../screens/SermonManagementScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ChatListScreen from '../screens/ChatListScreen';
 import ChatRoomScreen from '../screens/ChatRoomScreen';
@@ -28,8 +33,9 @@ import DonationReportsScreen from '../screens/DonationReportsScreen';
 import PrayerManagementScreen from '../screens/PrayerManagementScreen';
 import LiveStreamScreen from '../screens/LiveStreamScreen';
 import SettingsScreen from '../screens/SettingsScreen';
-import VideoCallScreen from '../screens/VideoCallScreen';
-import AudioCallScreen from '../screens/AudioCallScreen';
+// Call screens removed - causing issues
+// import VideoCallScreen from '../screens/VideoCallScreen';
+// import AudioCallScreen from '../screens/AudioCallScreen';
 
 // Profile Screens
 import EditProfileScreen from '../screens/EditProfileScreen';
@@ -48,14 +54,64 @@ import FirstTimersScreen from '../screens/FirstTimersScreen';
 import GenerateAttendanceQRScreen from '../screens/GenerateAttendanceQRScreen';
 import ManualAttendanceScreen from '../screens/ManualAttendanceScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import NotificationInboxScreen from '../screens/NotificationInboxScreen';
 import GivingReportScreen from '../screens/GivingReportScreen';
 import EventsReportScreen from '../screens/EventsReportScreen';
 import GrowthReportScreen from '../screens/GrowthReportScreen';
 import DepartmentManagementScreen from '../screens/DepartmentManagementScreen';
+import UserManagementScreen from '../screens/UserManagementScreen';
 import AIChatScreen from '../screens/AIChatScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
+// Tab order for swipe navigation
+const TAB_ORDER = ['Home', 'Feed', 'Chat', 'Sermons', 'Profile'];
+
+// Swipe wrapper component for tab screens
+function SwipeableTabScreen({ children, currentTab }: { children: React.ReactNode; currentTab: string }) {
+  const navigation = useNavigation<any>();
+
+  const navigateToTab = (tabName: string) => {
+    navigation.navigate(tabName);
+  };
+
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([-20, 20])
+    .onEnd((event) => {
+      'worklet';
+      const SWIPE_THRESHOLD = 50;
+      const velocityThreshold = 500;
+      const currentIndex = TAB_ORDER.indexOf(currentTab);
+
+      if (Math.abs(event.translationX) > SWIPE_THRESHOLD || Math.abs(event.velocityX) > velocityThreshold) {
+        let targetIndex: number;
+        
+        if (event.translationX > 0) {
+          // Swiped right - go to previous tab (left)
+          targetIndex = currentIndex - 1;
+        } else {
+          // Swiped left - go to next tab (right)
+          targetIndex = currentIndex + 1;
+        }
+
+        // Check boundaries and navigate
+        if (targetIndex >= 0 && targetIndex < TAB_ORDER.length) {
+          const targetTab = TAB_ORDER[targetIndex];
+          // Use runOnJS to call navigation on JS thread
+          runOnJS(navigateToTab)(targetTab);
+        }
+      }
+    });
+
+  return (
+    <GestureDetector gesture={panGesture}>
+      <View style={{ flex: 1 }}>
+        {children}
+      </View>
+    </GestureDetector>
+  );
+}
 
 function AuthStack() {
   return (
@@ -106,51 +162,80 @@ function MainTabs() {
     >
       <Tab.Screen
         name="Home"
-        component={HomeScreen}
         options={{
           tabBarLabel: 'Home',
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>🏠</Text>,
         }}
-      />
+      >
+        {() => (
+          <SwipeableTabScreen currentTab="Home">
+            <HomeScreen />
+          </SwipeableTabScreen>
+        )}
+      </Tab.Screen>
       <Tab.Screen
         name="Feed"
-        component={FeedScreen}
         options={{
           tabBarLabel: 'Feed',
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>📰</Text>,
           title: 'Church Feed',
         }}
-      />
+      >
+        {() => (
+          <SwipeableTabScreen currentTab="Feed">
+            <FeedScreen />
+          </SwipeableTabScreen>
+        )}
+      </Tab.Screen>
       <Tab.Screen
         name="Chat"
-        component={ChatListScreen}
         options={{
           tabBarLabel: 'Chat',
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>💬</Text>,
           title: 'Messages',
         }}
-      />
+      >
+        {() => (
+          <SwipeableTabScreen currentTab="Chat">
+            <ChatListScreen />
+          </SwipeableTabScreen>
+        )}
+      </Tab.Screen>
       <Tab.Screen
         name="Sermons"
-        component={SermonsScreen}
         options={{
           tabBarLabel: 'Sermons',
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>🎙️</Text>,
         }}
-      />
+      >
+        {() => (
+          <SwipeableTabScreen currentTab="Sermons">
+            <SermonsScreen />
+          </SwipeableTabScreen>
+        )}
+      </Tab.Screen>
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>👤</Text>,
         }}
-      />
+      >
+        {() => (
+          <SwipeableTabScreen currentTab="Profile">
+            <ProfileScreen />
+          </SwipeableTabScreen>
+        )}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }
 
 function MainStack() {
+  const { user } = useAuth();
+  const isAdminOrMedia = user?.role === 'admin' || user?.role === 'media' || user?.role === 'media_head' ||
+    (user?.departments && user.departments.some((d: string) => d.toLowerCase() === 'media'));
+
   return (
     <Stack.Navigator
       screenOptions={{
@@ -169,6 +254,9 @@ function MainStack() {
         options={{ headerShown: false }}
       />
       <Stack.Screen name="Events" component={EventsScreen} options={{ title: 'Events' }} />
+      <Stack.Screen name="EventDetail" component={EventDetailScreen} options={{ title: 'Event Details' }} />
+      <Stack.Screen name="EventManagement" component={EventManagementScreen} options={{ title: 'Manage Events' }} />
+      <Stack.Screen name="SermonManagement" component={SermonManagementScreen} options={{ title: 'Manage Sermons' }} />
       <Stack.Screen name="Prayer" component={PrayerScreen} options={{ title: 'Prayer Request' }} />
       <Stack.Screen name="Give" component={GiveScreen} options={{ title: 'Give' }} />
       <Stack.Screen name="DonationApproval" component={DonationApprovalScreen} options={{ title: 'Approve Donations' }} />
@@ -181,7 +269,10 @@ function MainStack() {
       <Stack.Screen name="MyPrayers" component={MyPrayersScreen} options={{ title: 'My Prayer Requests' }} />
       <Stack.Screen name="GivingHistory" component={GivingHistoryScreen} options={{ title: 'Giving History' }} />
       <Stack.Screen name="Support" component={HelpSupportScreen} options={{ title: 'Help & Support' }} />
-      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifications' }} />
+      
+      {/* Notification Screens */}
+      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Send Notifications' }} />
+      <Stack.Screen name="NotificationInbox" component={NotificationInboxScreen} options={{ title: 'Notifications' }} />
       
       {/* Chat Room Screens */}
       <Stack.Screen name="ChatRoom" component={ChatRoomScreen} options={{ title: 'Chat' }} />
@@ -193,7 +284,8 @@ function MainStack() {
         }} 
       />
       <Stack.Screen name="GroupMembers" component={GroupMembersScreen} options={{ title: 'Group Members' }} />
-      <Stack.Screen 
+      {/* Call screens removed - causing issues */}
+      {/* <Stack.Screen 
         name="VideoCall" 
         component={VideoCallScreen} 
         options={{ 
@@ -206,7 +298,7 @@ function MainStack() {
         options={{ 
           headerShown: false 
         }} 
-      />
+      /> */}
       
       {/* Church Documents */}
       <Stack.Screen name="ChurchDocuments" component={ChurchDocumentsScreen} options={{ title: 'Church Documents' }} />
@@ -224,12 +316,13 @@ function MainStack() {
       <Stack.Screen name="EventsReport" component={EventsReportScreen} options={{ title: 'Events Report' }} />
       <Stack.Screen name="GrowthReport" component={GrowthReportScreen} options={{ title: 'Growth Report' }} />
       <Stack.Screen name="DepartmentManagement" component={DepartmentManagementScreen} options={{ title: 'Department Management' }} />
+      <Stack.Screen name="UserManagement" component={UserManagementScreen} options={{ title: 'User Management' }} />
       <Stack.Screen name="AIChat" component={AIChatScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
 
-export default function AppNavigator() {
+const AppNavigator = React.forwardRef<NavigationContainerRef<any>, any>((props, ref) => {
   const { isAuthenticated, isLoading } = useAuth();
 
   console.log('AppNavigator: isLoading =', isLoading, ', isAuthenticated =', isAuthenticated);
@@ -246,11 +339,13 @@ export default function AppNavigator() {
   console.log('AppNavigator: Rendering navigation');
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={ref}>
       {isAuthenticated ? <MainStack /> : <AuthStack />}
     </NavigationContainer>
   );
-}
+});
+
+export default AppNavigator;
 
 const styles = StyleSheet.create({
   loadingContainer: {

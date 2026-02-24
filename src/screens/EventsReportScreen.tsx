@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,13 @@ import {
   TouchableOpacity
 } from 'react-native';
 import { eventsService } from '../services';
-import { colors, primaryColor } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 const EventsReportScreen = ({ navigation }: any) => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
+  const primaryColor = themeColors.primary[600];
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [events, setEvents] = useState<any[]>([]);
@@ -119,10 +123,10 @@ const EventsReportScreen = ({ navigation }: any) => {
 
                   <View style={styles.eventDetails}>
                     <Text style={styles.eventDate}>
-                      📅 {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
+                      ðŸ“… {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
                     </Text>
                     {event.location && (
-                      <Text style={styles.eventLocation}>📍 {event.location}</Text>
+                      <Text style={styles.eventLocation}>ðŸ“ {event.location}</Text>
                     )}
                   </View>
 
@@ -139,7 +143,7 @@ const EventsReportScreen = ({ navigation }: any) => {
                     )}
                     {event.registrationFee && (
                       <View style={styles.eventStat}>
-                        <Text style={styles.eventStatValue}>₦{event.registrationFee}</Text>
+                        <Text style={styles.eventStatValue}>â‚¦{event.registrationFee}</Text>
                         <Text style={styles.eventStatLabel}>Fee</Text>
                       </View>
                     )}
@@ -176,7 +180,7 @@ const EventsReportScreen = ({ navigation }: any) => {
 
                   <View style={styles.eventDetails}>
                     <Text style={styles.eventDate}>
-                      📅 {new Date(event.startDate).toLocaleDateString()}
+                      ðŸ“… {new Date(event.startDate).toLocaleDateString()}
                     </Text>
                   </View>
 
@@ -218,7 +222,8 @@ const EventsReportScreen = ({ navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
+
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
@@ -230,7 +235,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
   },
   header: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 20,
@@ -265,7 +270,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
     marginBottom: 5,
   },
   statLabel: {
@@ -316,7 +321,7 @@ const styles = StyleSheet.create({
   },
   eventCategory: {
     fontSize: 14,
-    color: primaryColor,
+    color: colors.primary[600],
     fontWeight: '600',
   },
   statusBadge: {
@@ -353,7 +358,7 @@ const styles = StyleSheet.create({
   eventStatValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
     marginBottom: 2,
   },
   eventStatLabel: {
@@ -385,7 +390,7 @@ const styles = StyleSheet.create({
   categoryRegistrations: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
   },
 });
 

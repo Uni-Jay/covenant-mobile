@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,12 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { firstTimerService } from '../services';
-import { colors, primaryColor } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 const FirstTimerRegisterScreen = ({ route, navigation }: any) => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const { qrCode } = route.params || {};
   const [loading, setLoading] = useState(false);
 
@@ -47,7 +50,7 @@ const FirstTimerRegisterScreen = ({ route, navigation }: any) => {
       );
 
       Alert.alert(
-        '🎉 Welcome!',
+        'ðŸŽ‰ Welcome!',
         `${result.message}\n\nYou need ${result.remainingToMembership} more Sunday attendances to become a member.`,
         [
           {
@@ -127,11 +130,11 @@ const FirstTimerRegisterScreen = ({ route, navigation }: any) => {
         </View>
 
         <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>📋 What happens next?</Text>
-          <Text style={styles.infoText}>• Your attendance is automatically recorded</Text>
-          <Text style={styles.infoText}>• Attend 6 Sunday services to become a member</Text>
-          <Text style={styles.infoText}>• You'll receive membership credentials automatically</Text>
-          <Text style={styles.infoText}>• We'll keep you updated on church events</Text>
+          <Text style={styles.infoTitle}>ðŸ“‹ What happens next?</Text>
+          <Text style={styles.infoText}>â€¢ Your attendance is automatically recorded</Text>
+          <Text style={styles.infoText}>â€¢ Attend 6 Sunday services to become a member</Text>
+          <Text style={styles.infoText}>â€¢ You'll receive membership credentials automatically</Text>
+          <Text style={styles.infoText}>â€¢ We'll keep you updated on church events</Text>
         </View>
 
         <TouchableOpacity
@@ -157,13 +160,14 @@ const FirstTimerRegisterScreen = ({ route, navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
+
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
   },
   header: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 20,
@@ -203,7 +207,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   infoBox: {
-    backgroundColor: primaryColor + '20',
+    backgroundColor: colors.primary[600] + '20',
     borderRadius: 12,
     padding: 15,
     marginBottom: 20,
@@ -220,7 +224,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   button: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     borderRadius: 8,
     padding: 18,
     alignItems: 'center',

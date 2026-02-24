@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,15 @@ import {
 } from 'react-native';
 import { dashboardService } from '../services';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors, primaryColor } from '../theme/colors';
 
 const { width } = Dimensions.get('window');
 
 const DashboardScreen = ({ navigation }: any) => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
+  const primaryColor = themeColors.primary[600];
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -61,12 +65,12 @@ const DashboardScreen = ({ navigation }: any) => {
   const renderActivityItem = (item: any, index: number) => {
     const getActivityIcon = (type: string) => {
       switch (type) {
-        case 'registration': return '👤';
-        case 'first_timer': return '🎉';
-        case 'post': return '📝';
-        case 'prayer': return '🙏';
-        case 'donation': return '💰';
-        default: return '•';
+        case 'registration': return 'ðŸ‘¤';
+        case 'first_timer': return 'ðŸŽ‰';
+        case 'post': return 'ðŸ“';
+        case 'prayer': return 'ðŸ™';
+        case 'donation': return 'ðŸ’°';
+        default: return 'â€¢';
       }
     };
 
@@ -77,7 +81,7 @@ const DashboardScreen = ({ navigation }: any) => {
           <Text style={styles.activityText}>{item.name}</Text>
           {item.activity_type === 'donation' && (
             <Text style={styles.activitySubtext}>
-              ₦{item.amount?.toLocaleString()} - {item.donation_type}
+              â‚¦{item.amount?.toLocaleString()} - {item.donation_type}
             </Text>
           )}
           {item.activity_type === 'first_timer' && (
@@ -105,7 +109,7 @@ const DashboardScreen = ({ navigation }: any) => {
   if (error) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.errorText}>⚠️ {error}</Text>
+        <Text style={styles.errorText}>âš ï¸ {error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchDashboardData}>
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
@@ -168,7 +172,7 @@ const DashboardScreen = ({ navigation }: any) => {
           )}
           {renderStatCard(
             'Donations',
-            `₦${(stats?.donations?.totalThisMonth || 0).toLocaleString()}`,
+            `â‚¦${(stats?.donations?.totalThisMonth || 0).toLocaleString()}`,
             'Total giving',
             '#10B981'
           )}
@@ -195,28 +199,28 @@ const DashboardScreen = ({ navigation }: any) => {
             style={[styles.actionButton, { backgroundColor: primaryColor }]}
             onPress={() => navigation.navigate('Events')}
           >
-            <Text style={styles.actionIcon}>📅</Text>
+            <Text style={styles.actionIcon}>ðŸ“…</Text>
             <Text style={styles.actionText}>Manage Events</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.accent }]}
             onPress={() => navigation.navigate('FirstTimers')}
           >
-            <Text style={styles.actionIcon}>🎉</Text>
+            <Text style={styles.actionIcon}>ðŸŽ‰</Text>
             <Text style={styles.actionText}>First-Timers</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: '#10B981' }]}
             onPress={() => navigation.navigate('Attendance')}
           >
-            <Text style={styles.actionIcon}>✅</Text>
+            <Text style={styles.actionIcon}>âœ…</Text>
             <Text style={styles.actionText}>Attendance</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: '#8B5CF6' }]}
             onPress={() => navigation.navigate('Notifications')}
           >
-            <Text style={styles.actionIcon}>📧</Text>
+            <Text style={styles.actionIcon}>ðŸ“§</Text>
             <Text style={styles.actionText}>Send Alerts</Text>
           </TouchableOpacity>
         </View>
@@ -241,29 +245,29 @@ const DashboardScreen = ({ navigation }: any) => {
           style={styles.reportButton}
           onPress={() => navigation.navigate('AttendanceReport')}
         >
-          <Text style={styles.reportButtonText}>📊 Attendance Report</Text>
-          <Text style={styles.reportArrow}>→</Text>
+          <Text style={styles.reportButtonText}>ðŸ“Š Attendance Report</Text>
+          <Text style={styles.reportArrow}>â†’</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.reportButton}
           onPress={() => navigation.navigate('GivingReport')}
         >
-          <Text style={styles.reportButtonText}>💰 Giving Report</Text>
-          <Text style={styles.reportArrow}>→</Text>
+          <Text style={styles.reportButtonText}>ðŸ’° Giving Report</Text>
+          <Text style={styles.reportArrow}>â†’</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.reportButton}
           onPress={() => navigation.navigate('EventsReport')}
         >
-          <Text style={styles.reportButtonText}>📅 Events Report</Text>
-          <Text style={styles.reportArrow}>→</Text>
+          <Text style={styles.reportButtonText}>ðŸ“… Events Report</Text>
+          <Text style={styles.reportArrow}>â†’</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.reportButton}
           onPress={() => navigation.navigate('GrowthReport')}
         >
-          <Text style={styles.reportButtonText}>📈 Growth Metrics</Text>
-          <Text style={styles.reportArrow}>→</Text>
+          <Text style={styles.reportButtonText}>ðŸ“ˆ Growth Metrics</Text>
+          <Text style={styles.reportArrow}>â†’</Text>
         </TouchableOpacity>
       </View>
 
@@ -272,7 +276,7 @@ const DashboardScreen = ({ navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
@@ -296,7 +300,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   retryButton: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     paddingHorizontal: 30,
     paddingVertical: 12,
     borderRadius: 8,
@@ -307,7 +311,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   header: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     paddingTop: 60,
     paddingBottom: 30,
     paddingHorizontal: 20,
@@ -446,7 +450,7 @@ const styles = StyleSheet.create({
   },
   reportArrow: {
     fontSize: 20,
-    color: primaryColor,
+    color: colors.primary[600],
   },
   footer: {
     height: 40,

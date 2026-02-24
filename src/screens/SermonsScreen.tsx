@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -13,13 +14,14 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { sermonsService } from '../services';
 import { Sermon } from '../types';
-import { colors } from '../theme/colors';
 import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
-export default function SermonsScreen({ navigation }: any) {
-  const { colors: themeColors } = useTheme();
+export default function SermonsScreen() {
+  const navigation = useNavigation<any>();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [sermons, setSermons] = useState<Sermon[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -189,7 +191,7 @@ export default function SermonsScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.gray[50],
@@ -398,3 +400,5 @@ const styles = StyleSheet.create({
     height: 20,
   },
 });
+
+

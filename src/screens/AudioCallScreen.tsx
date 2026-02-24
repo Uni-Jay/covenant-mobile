@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../theme/colors';
 import RtcEngine, { ChannelProfileType, IRtcEngine } from 'react-native-agora';
 import { AGORA_CONFIG } from '../config/agora.config';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 type RouteParams = {
   AudioCall: {
@@ -23,6 +24,8 @@ type RouteParams = {
 };
 
 const AudioCallScreen = () => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'AudioCall'>>();
   const { groupId, groupName } = route.params;
@@ -36,16 +39,13 @@ const AudioCallScreen = () => {
   const [participantsCount, setParticipantsCount] = useState(1);
   const [networkQuality, setNetworkQuality] = useState<'excellent' | 'good' | 'poor' | 'bad' | 'unknown'>('unknown');
   const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const [callStarted, setCallStarted] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   const agoraEngineRef = useRef<IRtcEngine | null>(null);
 
   useEffect(() => {
     setupAudioSDKEngine();
-    
-    // Start call timer
-    const interval = setInterval(() => {
-      setCallDuration(prev => prev + 1);
-    }, 1000);
 
     // Audio pulse animation
     const pulse = Animated.loop(
@@ -65,11 +65,28 @@ const AudioCallScreen = () => {
     pulse.start();
 
     return () => {
-      clearInterval(interval);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
       pulse.stop();
       leaveCall();
     };
   }, []);
+
+  // Start timer only when someone joins
+  useEffect(() => {
+    if (participantsCount > 1 && !callStarted) {
+      setCallStarted(true);
+      timerRef.current = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [participantsCount, callStarted]);
 
   const setupAudioSDKEngine = async () => {
     try {
@@ -211,24 +228,27 @@ const AudioCallScreen = () => {
               colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']}
               style={styles.audioIconContainer}
             >
-              <Text style={styles.audioIcon}>🎤</Text>
+              <Text style={styles.audioIcon}>ðŸŽ¤</Text>
             </LinearGradient>
           </Animated.View>
           
           <Text style={styles.groupName}>{groupName}</Text>
-          <Text style={styles.duration}>{formatDuration(callDuration)}</Text>
+          <View style={styles.durationContainer}>
+            <View style={[styles.recordingDot, callStarted && styles.recordingDotActive]} />
+            <Text style={styles.duration}>{formatDuration(callDuration)}</Text>
+          </View>
           
           {/* Status Indicators */}
           <View style={styles.statusRow}>
             <View style={[styles.networkBadge, styles[`network_${networkQuality}`]]}>
               <Text style={styles.networkIcon}>
-                {networkQuality === 'excellent' ? '📶' : networkQuality === 'good' ? '📶' : networkQuality === 'poor' ? '📵' : '⚠️'}
+                {networkQuality === 'excellent' ? 'ðŸ“¶' : networkQuality === 'good' ? 'ðŸ“¶' : networkQuality === 'poor' ? 'ðŸ“µ' : 'âš ï¸'}
               </Text>
               <Text style={styles.networkText}>{networkQuality}</Text>
             </View>
             
             <View style={styles.participantBadge}>
-              <Text style={styles.participantIcon}>👥</Text>
+              <Text style={styles.participantIcon}>ðŸ‘¥</Text>
               <Text style={styles.participantText}>{participantsCount}</Text>
             </View>
           </View>
@@ -236,14 +256,30 @@ const AudioCallScreen = () => {
           {connectionState !== 'connected' && (
             <View style={styles.connectionBanner}>
               <Text style={styles.connectionText}>
-                {connectionState === 'connecting' ? '⏳ Connecting...' : '❌ Disconnected'}
+                {connectionState === 'connecting' ? 'â³ Connecting...' : 'âŒ Disconnected'}
               </Text>
             </View>
           )}
           
-          <Text style={styles.callStatus}>
-            {isMuted ? 'Microphone muted' : isJoined ? 'Call in progress' : 'Connecting...'}
-          </Text>
+          <View style={styles.callStatusContainer}>
+            <View style={styles.statusDot} />
+            <Text style={styles.callStatus}>
+              {!callStarted && isJoined ? (
+                'Waiting for others to join...'
+              ) : isMuted ? (
+                'Microphone muted'
+              ) : callStarted ? (
+                'Call in progress'
+              ) : (
+                'Connecting...'
+              )}
+            </Text>
+          </View>
+          {!callStarted && isJoined && (
+            <Text style={styles.callNotStartedText}>
+              Call will start when someone joins
+            </Text>
+          )}
         </View>
 
         {/* Controls */}
@@ -253,7 +289,7 @@ const AudioCallScreen = () => {
               style={[styles.controlButton, isMuted && styles.controlButtonActive]}
               onPress={toggleMute}
             >
-              <Text style={styles.controlIcon}>{isMuted ? '🔇' : '🎤'}</Text>
+              <Text style={styles.controlIcon}>{isMuted ? 'ðŸ”‡' : 'ðŸŽ¤'}</Text>
               <Text style={styles.controlLabel}>{isMuted ? 'Unmute' : 'Mute'}</Text>
             </TouchableOpacity>
 
@@ -261,7 +297,7 @@ const AudioCallScreen = () => {
               style={[styles.controlButton, isSpeaker && styles.controlButtonActive]}
               onPress={toggleSpeaker}
             >
-              <Text style={styles.controlIcon}>{isSpeaker ? '🔊' : '🔈'}</Text>
+              <Text style={styles.controlIcon}>{isSpeaker ? 'ðŸ”Š' : 'ðŸ”ˆ'}</Text>
               <Text style={styles.controlLabel}>{isSpeaker ? 'Speaker' : 'Earpiece'}</Text>
             </TouchableOpacity>
           </View>
@@ -274,13 +310,13 @@ const AudioCallScreen = () => {
               colors={['#dc2626', '#991b1b']}
               style={styles.endCallGradient}
             >
-              <Text style={styles.endCallIcon}>📞</Text>
+              <Text style={styles.endCallIcon}>ðŸ“ž</Text>
               <Text style={styles.endCallText}>End Call</Text>
             </LinearGradient>
           </TouchableOpacity>
 
           <Text style={styles.noticeText}>
-            💡 Audio calls require Expo Development Build{'\n'}
+            ðŸ’¡ Audio calls require Expo Development Build{'\n'}
             This is a UI preview. See AGORA_SETUP.md for setup.
           </Text>
         </View>
@@ -289,7 +325,7 @@ const AudioCallScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -369,10 +405,25 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
+  durationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  recordingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginRight: 8,
+  },
+  recordingDotActive: {
+    backgroundColor: '#ef4444',
+  },
   duration: {
     color: 'rgba(255,255,255,0.95)',
     fontSize: 24,
-    marginBottom: 16,
     fontWeight: '600',
   },
   statusRow: {
@@ -457,6 +508,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 8,
   },
+  callStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 20,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10b981',
+    marginRight: 8,
+  },
+  callStatus: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  callNotStartedText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    fontStyle: 'italic',
+    marginTop: 8,
+    textAlign: 'center',
+  },
   controlsContainer: {
     backgroundColor: 'rgba(0,0,0,0.2)',
     paddingHorizontal: 20,
@@ -502,11 +582,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
     paddingHorizontal: 40,
-  },
-  callStatus: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 16,
-    marginTop: 8,
   },
   endCallButton: {
     overflow: 'hidden',

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,9 @@ import {
   Alert,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { donationsService } from '../services';
+import { colors } from '../theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
 
 interface Donation {
@@ -24,6 +25,8 @@ interface Donation {
 }
 
 export default function GivingHistoryScreen({ navigation }: any) {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
   const { user } = useAuth();
   const [donations, setDonations] = useState<Donation[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -210,7 +213,7 @@ export default function GivingHistoryScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

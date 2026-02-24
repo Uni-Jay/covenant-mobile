@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -27,12 +27,15 @@ import { Video, ResizeMode } from 'expo-av';
 import { useAuth } from '../context/AuthContext';
 import api, { chatService } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 import { LinearGradient } from 'expo-linear-gradient';
+import socketService from '../services/socket.service';
 
 type RouteParams = {
   ChatRoom: {
     groupId: number;
     groupName: string;
+    onMarkRead?: () => void;
   };
 };
 
@@ -69,6 +72,7 @@ const ChatRoomScreenEnhanced = () => {
   const { groupId, groupName } = route.params;
   const { user } = useAuth();
   const { colors, theme } = useTheme();
+  const styles = createStyles(colors);
   
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -90,22 +94,24 @@ const ChatRoomScreenEnhanced = () => {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   
   const flatListRef = useRef<FlatList>(null);
+  const textInputRef = useRef<TextInput>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleVideoCall = () => {
-    startVideoCall();
-  };
+  // Call functions removed - causing issues
+  // const handleVideoCall = () => {
+  //   startVideoCall();
+  // };
 
-  const handleAudioCall = () => {
-    startAudioCall();
+  // const handleAudioCall = () => {
+  //   startAudioCall();
+  // };
+
+  const handleGoBack = () => {
+    navigation.goBack();
   };
 
   const handleGroupInfo = () => {
     setShowGroupSettings(true);
-  };
-
-  const handleGoBack = () => {
-    navigation.goBack();
   };
 
   const handleSaveImage = async () => {
@@ -260,6 +266,11 @@ const ChatRoomScreenEnhanced = () => {
           !msg.isOwn ? { ...msg, isRead: true } : msg
         )
       );
+      
+      // Trigger parent refresh if callback provided
+      if (route.params?.onMarkRead) {
+        route.params.onMarkRead();
+      }
     } catch (error) {
       console.error('Mark read error:', error);
     }
@@ -300,8 +311,14 @@ const ChatRoomScreenEnhanced = () => {
     // Replace the @ mention with the selected user
     const words = message.split(' ');
     words[words.length - 1] = `@${member.first_name} ${member.last_name}`;
-    setMessage(words.join(' ') + ' ');
+    const newMessage = words.join(' ') + ' ';
+    setMessage(newMessage);
     setShowMentionSuggestions(false);
+    
+    // Keep focus on input
+    setTimeout(() => {
+      textInputRef.current?.focus();
+    }, 100);
   };
 
   // Parse message text to highlight @ mentions
@@ -536,48 +553,6 @@ const ChatRoomScreenEnhanced = () => {
     }
   };
 
-  const startVideoCall = () => {
-    Alert.alert(
-      'Video Call',
-      `Start a video call with ${groupName}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Start Call',
-          onPress: () => {
-            // Navigate to video call screen
-            const nav = navigation as any;
-            nav.navigate('VideoCall', {
-              groupId,
-              groupName,
-            });
-          },
-        },
-      ]
-    );
-  };
-
-  const startAudioCall = () => {
-    Alert.alert(
-      'Audio Call',
-      `Start an audio call with ${groupName}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Start Call',
-          onPress: () => {
-            // Navigate to audio call screen
-            const nav = navigation as any;
-            nav.navigate('AudioCall', {
-              groupId,
-              groupName,
-            });
-          },
-        },
-      ]
-    );
-  };
-
   const uploadMedia = async (uri: string, type: 'image' | 'file' | 'audio' | 'video', fileName?: string) => {
     setIsSending(true);
     try {
@@ -642,7 +617,7 @@ const ChatRoomScreenEnhanced = () => {
         item.isOwn ? { backgroundColor: colors.primary[600] } : { backgroundColor: colors.surface },
       ]}>
         {item.messageType === 'text' && (
-          <View>
+          <View style={{ padding: 12, paddingHorizontal: 16 }}>
             {renderMessageText(item.message, item.isOwn)}
           </View>
         )}
@@ -652,7 +627,7 @@ const ChatRoomScreenEnhanced = () => {
             onPress={() => {
               const fullUrl = item.fileUrl!.startsWith('http') 
                 ? item.fileUrl! 
-                : `http://${Platform.OS === 'android' ? '10.0.2.2' : 'localhost'}:3000${item.fileUrl}`;
+                : `http://localhost:5000${item.fileUrl}`;
               setPreviewImage({ 
                 uri: fullUrl, 
                 messageId: item.id, 
@@ -660,76 +635,73 @@ const ChatRoomScreenEnhanced = () => {
               });
             }}
             activeOpacity={0.9}
+            style={styles.mediaContainer}
           >
             <Image 
               source={{ 
                 uri: item.fileUrl.startsWith('http') 
                   ? item.fileUrl 
-                  : `http://${Platform.OS === 'android' ? '10.0.2.2' : 'localhost'}:3000${item.fileUrl}` 
+                  : `http://localhost:5000${item.fileUrl}` 
               }} 
               style={styles.imageMessage}
               resizeMode="cover"
             />
-            {item.message && (
-              <Text style={[
-                styles.messageText, 
-                { color: item.isOwn ? '#FFFFFF' : colors.text }
-              ]}>
-                {item.message}
-              </Text>
-            )}
-          </TouchableOpacity>
-        )}
-        
-        {item.messageType === 'file' && (
-          <TouchableOpacity style={styles.fileMessage}>
-            <View style={styles.fileIconContainer}>
-              <Text style={styles.fileIcon}>📄</Text>
+            <View style={styles.mediaOverlay}>
+              <Text style={styles.mediaIcon}>ðŸ–¼ï¸</Text>
             </View>
-            <Text style={[
-              styles.fileName, 
-              { color: item.isOwn ? '#FFFFFF' : colors.text }
-            ]}>
-              {item.message || 'Document'}
-            </Text>
           </TouchableOpacity>
         )}
         
-        {item.messageType === 'audio' && (
+        {item.messageType === 'file' && item.fileUrl && (
+          <TouchableOpacity 
+            style={styles.fileMessage}
+            onPress={() => {
+              const fileUrl = item.fileUrl!.startsWith('http') 
+                ? item.fileUrl! 
+                : `http://localhost:5000${item.fileUrl}`;
+              Linking.openURL(fileUrl);
+            }}
+          >
+            <View style={[styles.fileIconContainer, { backgroundColor: item.isOwn ? 'rgba(255,255,255,0.3)' : 'rgba(127,29,29,0.15)' }]}>
+              <Text style={styles.fileIcon}>ðŸ“„</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.fileName, { color: item.isOwn ? '#FFFFFF' : colors.text }]}>Document</Text>
+              <Text style={[styles.fileSize, { color: item.isOwn ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>Tap to open</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+        
+        {item.messageType === 'audio' && item.fileUrl && (
           <TouchableOpacity style={styles.audioMessage}>
-            <View style={styles.fileIconContainer}>
-              <Text style={styles.audioIcon}>🎤</Text>
+            <View style={[styles.fileIconContainer, { backgroundColor: item.isOwn ? 'rgba(255,255,255,0.3)' : 'rgba(127,29,29,0.15)' }]}>
+              <Text style={styles.audioIcon}>ðŸŽ¤</Text>
             </View>
-            <Text style={[
-              styles.fileName, 
-              { color: item.isOwn ? '#FFFFFF' : colors.text }
-            ]}>
-              Voice Message
-            </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.fileName, { color: item.isOwn ? '#FFFFFF' : colors.text }]}>Voice Message</Text>
+              <Text style={[styles.fileSize, { color: item.isOwn ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>Tap to play</Text>
+            </View>
           </TouchableOpacity>
         )}
         
         {item.messageType === 'video' && item.fileUrl && (
-          <View>
+          <View style={styles.mediaContainer}>
             <Video
               source={{ 
                 uri: item.fileUrl.startsWith('http') 
                   ? item.fileUrl 
-                  : `http://${Platform.OS === 'android' ? '10.0.2.2' : 'localhost'}:3000${item.fileUrl}` 
+                  : `http://localhost:5000${item.fileUrl}` 
               }}
               style={styles.videoMessage}
               useNativeControls
               resizeMode={ResizeMode.CONTAIN}
               isLooping={false}
             />
-            {item.message && (
-              <Text style={[
-                styles.messageText, 
-                { color: item.isOwn ? '#FFFFFF' : colors.text }
-              ]}>
-                {item.message}
-              </Text>
-            )}
+            <View style={[styles.mediaOverlay, { backgroundColor: 'transparent' }]}>
+              <View style={styles.playIconContainer}>
+                <Text style={styles.playIcon}>â–¶ï¸</Text>
+              </View>
+            </View>
           </View>
         )}
         
@@ -745,7 +717,7 @@ const ChatRoomScreenEnhanced = () => {
           </Text>
           {item.isOwn && (
             <Text style={styles.checkmark}>
-              {item.isRead ? '✓✓' : '✓'}
+              {item.isRead ? 'âœ“âœ“' : 'âœ“'}
             </Text>
           )}
         </View>
@@ -781,7 +753,7 @@ const ChatRoomScreenEnhanced = () => {
             style={styles.headerButton}
             activeOpacity={0.7}
           >
-            <Text style={styles.backIcon}>←</Text>
+            <Text style={styles.backIcon}>â†</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -794,41 +766,13 @@ const ChatRoomScreenEnhanced = () => {
               <Text style={styles.headerSubtitle}>Tap for group info</Text>
             </View>
           </TouchableOpacity>
-          
-          <View style={styles.headerRight}>
-            <TouchableOpacity 
-              onPress={handleVideoCall} 
-              style={styles.callButton}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']}
-                style={styles.callButtonGradient}
-              >
-                <Text style={styles.callIcon}>📹</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={handleAudioCall}
-              style={styles.callButton}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']}
-                style={styles.callButtonGradient}
-              >
-                <Text style={styles.callIcon}>📞</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
         </View>
       </LinearGradient>
       
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}>
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary[600]} />
@@ -836,7 +780,7 @@ const ChatRoomScreenEnhanced = () => {
           </View>
         ) : messages.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>💬</Text>
+            <Text style={styles.emptyIcon}>ðŸ’¬</Text>
             <Text style={styles.emptyText}>No messages yet</Text>
             <Text style={styles.emptySubtext}>Be the first to send a message!</Text>
           </View>
@@ -855,23 +799,23 @@ const ChatRoomScreenEnhanced = () => {
         {showAttachMenu && (
           <View style={styles.attachMenu}>
             <TouchableOpacity style={styles.attachOption} onPress={takePhoto}>
-              <Text style={styles.attachIcon}>📷</Text>
+              <Text style={styles.attachIcon}>ðŸ“·</Text>
               <Text style={styles.attachText}>Camera</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.attachOption} onPress={pickImage}>
-              <Text style={styles.attachIcon}>🖼️</Text>
+              <Text style={styles.attachIcon}>ðŸ–¼ï¸</Text>
               <Text style={styles.attachText}>Gallery</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.attachOption} onPress={pickVideo}>
-              <Text style={styles.attachIcon}>🎥</Text>
+              <Text style={styles.attachIcon}>ðŸŽ¥</Text>
               <Text style={styles.attachText}>Video</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.attachOption} onPress={pickDocument}>
-              <Text style={styles.attachIcon}>📄</Text>
+              <Text style={styles.attachIcon}>ðŸ“„</Text>
               <Text style={styles.attachText}>Document</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.attachOption} onPress={audioRecorder.isRecording ? stopRecording : startRecording}>
-              <Text style={styles.attachIcon}>{audioRecorder.isRecording ? '⏹️' : '🎤'}</Text>
+              <Text style={styles.attachIcon}>{audioRecorder.isRecording ? 'â¹ï¸' : 'ðŸŽ¤'}</Text>
               <Text style={styles.attachText}>{audioRecorder.isRecording ? 'Stop' : 'Record'}</Text>
             </TouchableOpacity>
           </View>
@@ -889,7 +833,7 @@ const ChatRoomScreenEnhanced = () => {
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{groupName} Settings</Text>
                 <TouchableOpacity onPress={() => setShowGroupSettings(false)}>
-                  <Text style={styles.closeButton}>✕</Text>
+                  <Text style={styles.closeButton}>âœ•</Text>
                 </TouchableOpacity>
               </View>
               
@@ -904,7 +848,7 @@ const ChatRoomScreenEnhanced = () => {
                   });
                 }}
               >
-                <Text style={styles.settingIcon}>👥</Text>
+                <Text style={styles.settingIcon}>ðŸ‘¥</Text>
                 <Text style={styles.settingText}>View Members</Text>
               </TouchableOpacity>
               
@@ -915,7 +859,7 @@ const ChatRoomScreenEnhanced = () => {
                   Alert.alert('Add Members', 'This feature will be available soon');
                 }}
               >
-                <Text style={styles.settingIcon}>➕</Text>
+                <Text style={styles.settingIcon}>âž•</Text>
                 <Text style={styles.settingText}>Add Members</Text>
               </TouchableOpacity>
               
@@ -940,7 +884,7 @@ const ChatRoomScreenEnhanced = () => {
                   }
                 }}
               >
-                <Text style={styles.settingIcon}>🖼️</Text>
+                <Text style={styles.settingIcon}>ðŸ–¼ï¸</Text>
                 <Text style={styles.settingText}>Change Group Photo</Text>
               </TouchableOpacity>
               
@@ -951,7 +895,7 @@ const ChatRoomScreenEnhanced = () => {
                   Alert.alert('Notifications', 'Notification settings will be available soon');
                 }}
               >
-                <Text style={styles.settingIcon}>🔔</Text>
+                <Text style={styles.settingIcon}>ðŸ””</Text>
                 <Text style={styles.settingText}>Notifications</Text>
               </TouchableOpacity>
               
@@ -970,7 +914,7 @@ const ChatRoomScreenEnhanced = () => {
                   }
                 }}
               >
-                <Text style={styles.settingIcon}>ℹ️</Text>
+                <Text style={styles.settingIcon}>â„¹ï¸</Text>
                 <Text style={styles.settingText}>Group Info</Text>
               </TouchableOpacity>
               
@@ -1000,7 +944,7 @@ const ChatRoomScreenEnhanced = () => {
                   );
                 }}
               >
-                <Text style={styles.settingIcon}>🚪</Text>
+                <Text style={styles.settingIcon}>ðŸšª</Text>
                 <Text style={[styles.settingText, styles.dangerText]}>Leave Group</Text>
               </TouchableOpacity>
             </View>
@@ -1009,7 +953,7 @@ const ChatRoomScreenEnhanced = () => {
 
         {/* Image Preview Modal */}
         <Modal
-          visible={!!previewImage}
+          visible={previewImage !== null}
           transparent
           animationType="fade"
           onRequestClose={() => setPreviewImage(null)}
@@ -1019,23 +963,23 @@ const ChatRoomScreenEnhanced = () => {
               style={styles.imagePreviewClose}
               onPress={() => setPreviewImage(null)}
             >
-              <Text style={styles.imagePreviewCloseText}>✕</Text>
+              <Text style={styles.imagePreviewCloseText}>âœ•</Text>
             </TouchableOpacity>
-
+            
             {previewImage && (
               <>
-                <Image
-                  source={{ uri: previewImage.uri }}
+                <Image 
+                  source={{ uri: previewImage.uri }} 
                   style={styles.imagePreviewFull}
                   resizeMode="contain"
                 />
-
+                
                 <View style={styles.imagePreviewActions}>
                   <TouchableOpacity 
                     style={styles.imageActionButton}
                     onPress={handleSaveImage}
                   >
-                    <Text style={styles.imageActionIcon}>💾</Text>
+                    <Text style={styles.imageActionIcon}>ðŸ’¾</Text>
                     <Text style={styles.imageActionText}>Save</Text>
                   </TouchableOpacity>
 
@@ -1044,7 +988,7 @@ const ChatRoomScreenEnhanced = () => {
                       style={[styles.imageActionButton, styles.imageActionDanger]}
                       onPress={handleDeleteImage}
                     >
-                      <Text style={styles.imageActionIcon}>🗑️</Text>
+                      <Text style={styles.imageActionIcon}>ðŸ—‘ï¸</Text>
                       <Text style={styles.imageActionText}>Delete</Text>
                     </TouchableOpacity>
                   )}
@@ -1053,7 +997,7 @@ const ChatRoomScreenEnhanced = () => {
                     style={styles.imageActionButton}
                     onPress={handleForwardImage}
                   >
-                    <Text style={styles.imageActionIcon}>➡️</Text>
+                    <Text style={styles.imageActionIcon}>âž¡ï¸</Text>
                     <Text style={styles.imageActionText}>Forward</Text>
                   </TouchableOpacity>
                 </View>
@@ -1074,7 +1018,7 @@ const ChatRoomScreenEnhanced = () => {
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Message Info</Text>
                 <TouchableOpacity onPress={() => setShowMessageInfo(false)} style={styles.closeButton}>
-                  <Text style={styles.closeButtonText}>×</Text>
+                  <Text style={styles.closeButtonText}>Ã—</Text>
                 </TouchableOpacity>
               </View>
               
@@ -1090,7 +1034,7 @@ const ChatRoomScreenEnhanced = () => {
                   
                   <Text style={{fontSize: 14, color: '#666', marginBottom: 8}}>Status:</Text>
                   <Text style={{fontSize: 16, color: selectedMessage.isRead ? '#10b981' : '#f59e0b'}}>
-                    {selectedMessage.isRead ? '✓✓ Read' : '✓ Delivered'}
+                    {selectedMessage.isRead ? 'âœ“âœ“ Read' : 'âœ“ Delivered'}
                   </Text>
                   
                   <Text style={{fontSize: 12, color: '#999', marginTop: 16, fontStyle: 'italic'}}>
@@ -1146,10 +1090,11 @@ const ChatRoomScreenEnhanced = () => {
             style={[styles.attachButton, { backgroundColor: colors.primary[50] }]}
             onPress={() => setShowAttachMenu(!showAttachMenu)}
           >
-            <Text style={[styles.attachButtonText, { color: colors.primary[600] }]}>➕</Text>
+            <Text style={[styles.attachButtonText, { color: colors.primary[600] }]}>âž•</Text>
           </TouchableOpacity>
 
           <TextInput
+            ref={textInputRef}
             style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
             placeholder="Type a message..."
             placeholderTextColor={colors.textSecondary}
@@ -1177,7 +1122,7 @@ const ChatRoomScreenEnhanced = () => {
               {isSending ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.sendButtonText}>➤</Text>
+                <Text style={styles.sendButtonText}>âž¤</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>
@@ -1187,31 +1132,36 @@ const ChatRoomScreenEnhanced = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
   },
   headerGradient: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 10,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
   },
   headerButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   backIcon: {
-    fontSize: 28,
+    fontSize: 26,
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   headerTitle: {
     flex: 1,
@@ -1220,53 +1170,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerGroupName: {
-    fontSize: 19,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#fff',
-    marginBottom: 2,
+    marginBottom: 3,
+    letterSpacing: 0.3,
   },
   headerSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
     fontWeight: '500',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  callButton: {
-    borderRadius: 22,
-    overflow: 'hidden',
-  },
-  callButtonGradient: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  callIcon: {
-    fontSize: 22,
+    letterSpacing: 0.5,
   },
   messagesList: {
     padding: 16,
     paddingBottom: 8,
   },
   messageContainer: {
-    marginBottom: 16,
-    maxWidth: '75%',
-    paddingHorizontal: 4,
+    marginBottom: 20,
+    maxWidth: '80%',
+    paddingHorizontal: 2,
   },
   messageBubble: {
     borderRadius: 20,
-    padding: 14,
-    paddingHorizontal: 18,
+    padding: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   ownMessage: {
     alignSelf: 'flex-end',
@@ -1275,66 +1207,117 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   senderName: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 6,
-    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 5,
+    marginLeft: 6,
     textTransform: 'capitalize',
+    letterSpacing: 0.3,
+    opacity: 0.7,
   },
   messageText: {
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 21,
+    letterSpacing: 0.2,
+  },
+  mediaContainer: {
+    position: 'relative',
+    borderRadius: 18,
+    overflow: 'hidden',
+    marginVertical: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   imageMessage: {
-    width: 240,
-    height: 240,
-    borderRadius: 16,
-    marginBottom: 8,
+    width: 280,
+    height: 280,
+    borderRadius: 18,
   },
   videoMessage: {
-    width: 280,
-    height: 200,
-    borderRadius: 16,
-    marginBottom: 8,
+    width: 320,
+    height: 240,
+    borderRadius: 18,
     backgroundColor: '#000',
+  },
+  mediaOverlay: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    padding: 6,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  mediaIcon: {
+    fontSize: 16,
+  },
+  playIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginLeft: -36,
+    marginTop: -36,
+  },
+  playIcon: {
+    fontSize: 32,
+    marginLeft: 4,
   },
   fileMessage: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 10,
+    padding: 14,
+    borderRadius: 16,
+    minWidth: 240,
   },
   audioMessage: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 10,
+    padding: 14,
+    borderRadius: 16,
+    minWidth: 240,
   },
   fileIconContainer: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(59,130,246,0.15)',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
   },
   fileIcon: {
-    fontSize: 22,
+    fontSize: 24,
   },
   audioIcon: {
-    fontSize: 22,
+    fontSize: 24,
   },
   fileName: {
     fontSize: 15,
     fontWeight: '600',
-    flex: 1,
+    letterSpacing: 0.2,
+  },
+  fileSize: {
+    fontSize: 12,
+    marginTop: 3,
+    opacity: 0.8,
   },
   checkmark: {
-    fontSize: 14,
-    marginLeft: 4,
+    fontSize: 13,
+    marginLeft: 5,
     color: '#4fc3f7',
   },
   messageFooter: {
@@ -1342,59 +1325,80 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     marginTop: 6,
+    paddingHorizontal: 10,
+    paddingBottom: 6,
   },
   timestamp: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
+    opacity: 0.75,
+    letterSpacing: 0.3,
   },
   typingContainer: {
     padding: 12,
-    paddingLeft: 16,
+    paddingLeft: 18,
   },
   typingText: {
-    fontSize: 13,
+    fontSize: 12,
     fontStyle: 'italic',
+    opacity: 0.7,
+    letterSpacing: 0.3,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: 14,
-    borderTopWidth: 1,
-    elevation: 10,
+    padding: 12,
+    paddingHorizontal: 16,
+    borderTopWidth: 0,
+    elevation: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   attachButton: {
-    padding: 10,
-    borderRadius: 24,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 4,
+    marginRight: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   attachButtonText: {
-    fontSize: 26,
+    fontSize: 24,
+    fontWeight: '600',
   },
   input: {
     flex: 1,
-    borderRadius: 26,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    maxHeight: 100,
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    paddingTop: 11,
+    maxHeight: 110,
     marginHorizontal: 8,
-    fontSize: 16,
+    fontSize: 15,
+    lineHeight: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   sendButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     overflow: 'hidden',
-    elevation: 4,
+    elevation: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
   },
   sendButtonGradient: {
     flex: 1,
@@ -1404,36 +1408,43 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   sendButtonText: {
-    fontSize: 24,
+    fontSize: 22,
     color: '#fff',
     fontWeight: 'bold',
   },
   sendButtonDisabled: {
-    elevation: 0,
-    shadowOpacity: 0,
+    elevation: 1,
+    shadowOpacity: 0.05,
   },
   attachMenu: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 18,
     backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    elevation: 4,
+    borderTopWidth: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
   },
   attachOption: {
     alignItems: 'center',
-    padding: 10,
+    padding: 12,
+    borderRadius: 16,
   },
   attachIcon: {
-    fontSize: 32,
-    marginBottom: 6,
+    fontSize: 36,
+    marginBottom: 8,
   },
   attachText: {
-    fontSize: 12,
+    fontSize: 11,
     marginTop: 4,
     fontWeight: '600',
+    letterSpacing: 0.5,
   },
   modalOverlay: {
     flex: 1,
@@ -1560,18 +1571,22 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
+    fontSize: 72,
+    marginBottom: 20,
+    opacity: 0.8,
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontSize: 19,
+    fontWeight: '700',
+    marginBottom: 10,
+    letterSpacing: 0.3,
   },
   emptySubtext: {
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
+    letterSpacing: 0.2,
+    opacity: 0.8,
   },
   // @ Mention styles
   mentionSuggestions: {
@@ -1593,14 +1608,19 @@ const styles = StyleSheet.create({
   mentionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 14,
     borderBottomWidth: 1,
   },
   mentionAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginRight: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   mentionAvatarPlaceholder: {
     justifyContent: 'center',
@@ -1616,16 +1636,19 @@ const styles = StyleSheet.create({
   mentionName: {
     fontSize: 15,
     fontWeight: '600',
-    marginBottom: 2,
+    marginBottom: 3,
+    letterSpacing: 0.2,
   },
   mentionRole: {
-    fontSize: 12,
+    fontSize: 11,
+    opacity: 0.7,
+    letterSpacing: 0.3,
   },
   mentionText: {
-    fontWeight: '600',
-    paddingHorizontal: 4,
+    fontWeight: '700',
+    paddingHorizontal: 5,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 6,
   },
 });
 

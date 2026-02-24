@@ -1,54 +1,78 @@
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { Platform } from 'react-native';
 import api from './api';
 
-// Complete web browser session on return
-WebBrowser.maybeCompleteAuthSession();
-
 const GOOGLE_WEB_CLIENT_ID = '538314378005-7sqems09ocusr7qefn065nkbq7lfarv7.apps.googleusercontent.com';
-const GOOGLE_ANDROID_CLIENT_ID = '538314378005-i14i2a210499e17d87j8qrndtrjt347t.apps.googleusercontent.com';
-const GOOGLE_IOS_CLIENT_ID = '538314378005-ufhjia386q6nq3m0mirhfudjfunpjnrj.apps.googleusercontent.com'; // Add iOS client ID from Google Console
+
+// Configure Google Sign-In
+GoogleSignin.configure({
+  webClientId: GOOGLE_WEB_CLIENT_ID, // From Firebase/Google Console
+  offlineAccess: true, // Get refresh token
+  forceCodeForRefreshToken: true,
+});
 
 export const googleAuthService = {
-  // Process the authentication response
-  processAuthResponse: async (idToken: string, userInfo: any) => {
+  // Sign in with Google
+  signIn: async () => {
     try {
-      // Send Google token to backend
+      // Check if device supports Google Play services
+      await GoogleSignin.hasPlayServices();
+      
+      // Sign in
+      const userInfo = await GoogleSignin.signIn();
+      const user = userInfo.data?.user;
+      
+      console.log('Google Sign-In Success:', {
+        email: user?.email,
+        name: user?.name,
+      });
+      
+      // Get ID token
+      const tokens = await GoogleSignin.getTokens();
+      
+      // Send to backend
       const response = await api.post('/auth/google', {
-        idToken: idToken,
+        idToken: tokens.idToken,
         user: {
-          email: userInfo.email || '',
-          firstName: userInfo.given_name || '',
-          lastName: userInfo.family_name || '',
-          photo: userInfo.picture || null,
-          googleId: userInfo.sub || '',
+          email: user?.email || '',
+          firstName: user?.givenName || '',
+          lastName: user?.familyName || '',
+          photo: user?.photo || null,
+          googleId: user?.id || '',
         },
       });
       
       return response.data;
     } catch (error: any) {
-      console.error('Google auth processing error:', error);
-      throw error;
+      console.error('Google Sign-In Error:', error);
+      
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        throw new Error('Sign in cancelled');
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        throw new Error('Sign in already in progress');
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        throw new Error('Google Play services not available');
+      } else {
+        throw new Error(error.message || 'Failed to sign in with Google');
+      }
     }
   },
 
   signOut: async () => {
-    // No specific sign out needed for expo-auth-session
-    console.log('Google sign out');
+    try {
+      await GoogleSignin.signOut();
+      console.log('Google sign out success');
+    } catch (error) {
+      console.error('Google sign out error:', error);
+    }
   },
-};
-
-// Hook to use in components
-export const useGoogleAuth = () => {
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: GOOGLE_IOS_CLIENT_ID,
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-  });
-
-  return {
-    request,
-    response,
-    promptAsync,
-  };
+  
+  // Check if signed in
+  isSignedIn: async () => {
+    try {
+      return await GoogleSignin.hasPreviousSignIn();
+    } catch (error) {
+      return false;
+    }
+  },
 };

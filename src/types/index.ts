@@ -9,6 +9,7 @@ export interface User {
   phone?: string;
   address?: string;
   profileImage?: string;
+  photo?: string;
   gender?: 'male' | 'female';
   departments?: string[];
   isActive: boolean;
@@ -58,6 +59,7 @@ export interface Event {
   location: string;
   category: string;
   imageUrl: string;
+  speaker?: string;
   createdAt: string;
 }
 

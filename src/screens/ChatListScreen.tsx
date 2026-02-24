@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,14 +12,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { chatService } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 type RootStackParamList = {
   ChatRoom: { department: string };
-  ChatRoomEnhanced: { groupId: number; groupName: string };
+  ChatRoomEnhanced: { groupId: number; groupName: string; onMarkRead?: () => void };
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -40,6 +42,8 @@ const ChatListScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuth();
   const { colors, theme } = useTheme();
+  const styles = createStyles(colors);
+  const primaryColor = colors.primary[600];
   const [groups, setGroups] = useState<GroupChat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -47,6 +51,13 @@ const ChatListScreen = () => {
   useEffect(() => {
     loadGroups();
   }, []);
+
+  // Refresh groups when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadGroups();
+    }, [])
+  );
 
   const loadGroups = async () => {
     try {
@@ -70,27 +81,34 @@ const ChatListScreen = () => {
   };
 
   function getDepartmentIcon(department?: string): string {
-    if (!department) return '💬';
+    if (!department) return 'ðŸ’¬';
     const icons: { [key: string]: string } = {
-      'Choir': '🎵',
-      'Drama': '🎭',
-      'Media': '📹',
-      'Ushering': '👋',
-      'Usher': '👋',
-      'Protocol': '🎖️',
-      'Children': '👶',
-      'Youth': '🧑',
-      'Prayer': '🙏',
-      'Prayer Team': '🙏',
-      'Evangelism': '📢',
-      'Welfare': '🤝',
-      'Ministers': '⛪',
+      'Choir': 'ðŸŽµ',
+      'Drama': 'ðŸŽ­',
+      'Media': 'ðŸ“¹',
+      'Ushering': 'ðŸ‘‹',
+      'Usher': 'ðŸ‘‹',
+      'Protocol': 'ðŸŽ–ï¸',
+      'Children': 'ðŸ‘¶',
+      'Youth': 'ðŸ§‘',
+      'Prayer': 'ðŸ™',
+      'Prayer Team': 'ðŸ™',
+      'Evangelism': 'ðŸ“¢',
+      'Welfare': 'ðŸ¤',
+      'Ministers': 'â›ª',
     };
-    return icons[department] || '👥';
+    return icons[department] || 'ðŸ‘¥';
   }
 
   const handleChatPress = (group: GroupChat) => {
-    navigation.navigate('ChatRoomEnhanced', { groupId: group.id, groupName: group.name });
+    navigation.navigate('ChatRoomEnhanced', { 
+      groupId: group.id, 
+      groupName: group.name,
+      onMarkRead: () => {
+        // Refresh the group list when messages are marked as read
+        loadGroups();
+      }
+    });
   };
 
   const getImageUrl = (photo?: string): string | undefined => {
@@ -99,7 +117,25 @@ const ChatListScreen = () => {
     const baseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
     return `${baseUrl}${photo}`;
   };
-
+  const getLastMessageDisplay = (group: any) => {
+    const lastMsg = group.last_message || '';
+    
+    // Check if message is a media URL
+    if (lastMsg.includes('/uploads/') || lastMsg.startsWith('http')) {
+      if (lastMsg.includes('.jpg') || lastMsg.includes('.jpeg') || lastMsg.includes('.png') || lastMsg.includes('.gif')) {
+        return 'ðŸ“· Photo';
+      } else if (lastMsg.includes('.mp4') || lastMsg.includes('.mov') || lastMsg.includes('.avi')) {
+        return 'ðŸŽ¥ Video';
+      } else if (lastMsg.includes('.mp3') || lastMsg.includes('.wav') || lastMsg.includes('.m4a')) {
+        return 'ðŸŽ¤ Voice message';
+      } else if (lastMsg.includes('.pdf') || lastMsg.includes('.doc') || lastMsg.includes('.txt')) {
+        return 'ðŸ“„ Document';
+      }
+      return 'ðŸ“Ž File';
+    }
+    
+    return lastMsg || group.description || 'No messages yet';
+  };
   const formatMessageTime = (timestamp?: string): string => {
     if (!timestamp) return '';
     const date = new Date(timestamp);
@@ -173,7 +209,7 @@ const ChatListScreen = () => {
               </View>
               <View style={styles.lastMessageRow}>
                 <Text style={[styles.lastMessage, { color: colors.textSecondary }]} numberOfLines={1}>
-                  {group.last_message || group.description || 'No messages yet'}
+                  {getLastMessageDisplay(group)}
                 </Text>
                 {group.unread_count !== undefined && group.unread_count > 0 && (
                   <View style={[styles.unreadBadge, { backgroundColor: colors.primary[600] }]}>
@@ -189,7 +225,7 @@ const ChatListScreen = () => {
 
         {groups.length === 0 && !isLoading && (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>💬</Text>
+            <Text style={styles.emptyIcon}>ðŸ’¬</Text>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               No group chats available.{'\n'}
               Join a department to see group chats!
@@ -207,7 +243,7 @@ const ChatListScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
   },

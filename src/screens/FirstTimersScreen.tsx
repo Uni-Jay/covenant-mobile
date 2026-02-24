@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,13 @@ import {
   RefreshControl
 } from 'react-native';
 import { firstTimerService } from '../services';
-import { colors, primaryColor } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 const FirstTimersScreen = ({ navigation }: any) => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
+  const primaryColor = themeColors.primary[600];
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [firstTimers, setFirstTimers] = useState<any[]>([]);
@@ -47,7 +51,7 @@ const FirstTimersScreen = ({ navigation }: any) => {
 
   const getStatusBadge = (item: any) => {
     if (item.convertedToMember) {
-      return { text: 'Member ✓', color: '#10B981' };
+      return { text: 'Member âœ“', color: '#10B981' };
     } else if (item.sundayServiceCount >= 6) {
       return { text: 'Ready', color: '#F59E0B' };
     } else {
@@ -96,7 +100,7 @@ const FirstTimersScreen = ({ navigation }: any) => {
 
         {item.address && (
           <Text style={styles.cardAddress} numberOfLines={1}>
-            📍 {item.address}
+            ðŸ“ {item.address}
           </Text>
         )}
 
@@ -171,13 +175,14 @@ const FirstTimersScreen = ({ navigation }: any) => {
   );
 };
 
-const styles = StyleSheet.create({
+
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
   },
   header: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     paddingTop: 60,
     paddingBottom: 20,
     paddingHorizontal: 20,
@@ -208,8 +213,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   filterButtonActive: {
-    backgroundColor: primaryColor,
-    borderColor: primaryColor,
+    backgroundColor: colors.primary[600],
+    borderColor: colors.primary[600],
   },
   filterText: {
     fontSize: 14,
@@ -282,7 +287,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: primaryColor,
+    color: colors.primary[600],
     marginBottom: 2,
   },
   statLabel: {

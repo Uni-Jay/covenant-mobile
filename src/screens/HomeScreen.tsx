@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -14,14 +15,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { eventsService, sermonsService } from '../services';
-import { colors } from '../theme/colors';
 import { Event, Sermon } from '../types';
 
 const { width } = Dimensions.get('window');
 
-export default function HomeScreen({ navigation }: any) {
+export default function HomeScreen() {
+  const navigation = useNavigation<any>();
   const { user } = useAuth();
-  const { colors: themeColors } = useTheme();
+  const { colors: colors } = useTheme();
+  const styles = createStyles(colors);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [recentSermons, setRecentSermons] = useState<Sermon[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -62,7 +64,7 @@ export default function HomeScreen({ navigation }: any) {
 
   return (
     <ScrollView
-      style={[styles.container, { backgroundColor: themeColors.background }]}
+      style={[styles.container, { backgroundColor: colors.background }]}
       refreshControl={
         <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={[colors.primary[600]]} />
       }
@@ -72,45 +74,55 @@ export default function HomeScreen({ navigation }: any) {
         colors={[colors.primary[600], colors.primary[800]]}
         style={styles.header}
       >
-        <Text style={styles.greeting}>{getGreeting()},</Text>
-        <Text style={styles.userName}>{user?.fullName || 'Brother/Sister'} ✨</Text>
+        <View style={styles.headerTop}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>{getGreeting()},</Text>
+            <Text style={styles.userName}>{user?.fullName || 'Brother/Sister'} ✨</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={() => navigation.navigate('NotificationInbox')}
+          >
+            <Text style={styles.notificationIcon}>🔔</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.verseCard}>
           <Text style={styles.verse}>"Light of the World" - John 8:12</Text>
         </View>
       </LinearGradient>
 
       {/* Service Times Card */}
-      <View style={[styles.card, { backgroundColor: themeColors.surface }]}>
+      <View style={[styles.card, { backgroundColor: colors.surface }]}>
         <LinearGradient
           colors={['rgba(37, 99, 235, 0.05)', 'rgba(37, 99, 235, 0.02)']}
           style={styles.cardGradient}
         >
           <View style={styles.cardHeader}>
-            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>⏰ Service Times</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>⏰ Service Times</Text>
           </View>
-          <View style={[styles.serviceItem, { borderBottomColor: themeColors.border }]}>
+          <View style={[styles.serviceItem, { borderBottomColor: colors.border }]}>
             <View style={styles.serviceDayContainer}>
-              <Text style={[styles.serviceDay, { color: themeColors.primary[700] }]}>Sunday</Text>
+              <Text style={[styles.serviceDay, { color: colors.primary[700] }]}>Sunday</Text>
             </View>
-            <Text style={[styles.serviceTime, { color: themeColors.textSecondary }]}>School: 8am-9am | Service: 9am-11am</Text>
+            <Text style={[styles.serviceTime, { color: colors.textSecondary }]}>School: 8am-9am | Service: 9am-11am</Text>
           </View>
-          <View style={[styles.serviceItem, { borderBottomColor: themeColors.border }]}>
+          <View style={[styles.serviceItem, { borderBottomColor: colors.border }]}>
             <View style={styles.serviceDayContainer}>
-              <Text style={[styles.serviceDay, { color: themeColors.primary[700] }]}>Tuesday</Text>
+              <Text style={[styles.serviceDay, { color: colors.primary[700] }]}>Tuesday</Text>
             </View>
-            <Text style={[styles.serviceTime, { color: themeColors.textSecondary }]}>Prayer Hour: 6pm-7pm</Text>
+            <Text style={[styles.serviceTime, { color: colors.textSecondary }]}>Prayer Hour: 6pm-7pm</Text>
           </View>
-          <View style={[styles.serviceItem, { borderBottomColor: themeColors.border }]}>
+          <View style={[styles.serviceItem, { borderBottomColor: colors.border }]}>
             <View style={styles.serviceDayContainer}>
-              <Text style={[styles.serviceDay, { color: themeColors.primary[700] }]}>Thursday</Text>
+              <Text style={[styles.serviceDay, { color: colors.primary[700] }]}>Thursday</Text>
             </View>
-            <Text style={[styles.serviceTime, { color: themeColors.textSecondary }]}>Bible Study: 6pm-7pm</Text>
+            <Text style={[styles.serviceTime, { color: colors.textSecondary }]}>Bible Study: 6pm-7pm</Text>
           </View>
-          <View style={[styles.serviceItem, { borderBottomColor: themeColors.border }]}>
+          <View style={[styles.serviceItem, { borderBottomColor: colors.border }]}>
             <View style={styles.serviceDayContainer}>
-              <Text style={[styles.serviceDay, { color: themeColors.primary[700] }]}>Last Friday</Text>
+              <Text style={[styles.serviceDay, { color: colors.primary[700] }]}>Last Friday</Text>
             </View>
-            <Text style={[styles.serviceTime, { color: themeColors.textSecondary }]}>Monthly Vigil: 11pm-4am</Text>
+            <Text style={[styles.serviceTime, { color: colors.textSecondary }]}>Monthly Vigil: 11pm-4am</Text>
           </View>
         </LinearGradient>
       </View>
@@ -221,7 +233,7 @@ export default function HomeScreen({ navigation }: any) {
           >
             <View style={styles.eventImageContainer}>
               <Image
-                source={{ uri: `http://${Platform.OS === 'android' ? '10.0.2.2' : 'localhost'}:5000${event.imageUrl}` }}
+                source={{ uri: `http://localhost:5000${event.imageUrl}` }}
                 style={styles.eventImage}
               />
               <LinearGradient
@@ -283,7 +295,7 @@ export default function HomeScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -293,6 +305,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  notificationButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  notificationIcon: {
+    fontSize: 22,
   },
   greeting: {
     fontSize: 18,
@@ -304,7 +343,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.white,
     marginTop: 4,
-    marginBottom: 16,
   },
   verseCard: {
     backgroundColor: 'rgba(255,255,255,0.15)',
@@ -324,7 +362,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: colors.primary[900],
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -366,7 +404,7 @@ const styles = StyleSheet.create({
     width: '47%',
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: colors.primary[600],
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -390,6 +428,7 @@ const styles = StyleSheet.create({
   },
   section: {
     padding: 20,
+    backgroundColor: colors.background,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -399,15 +438,15 @@ const styles = StyleSheet.create({
   },
   seeAll: {
     fontSize: 14,
-    color: colors.secondary[600],
+    color: colors.primary[500],
     fontWeight: '700',
   },
   eventCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     marginBottom: 16,
     overflow: 'hidden',
-    shadowColor: colors.primary[900],
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -436,7 +475,7 @@ const styles = StyleSheet.create({
   eventTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: colors.gray[900],
+    color: colors.text,
     marginBottom: 8,
   },
   eventMetaRow: {
@@ -446,26 +485,26 @@ const styles = StyleSheet.create({
   },
   eventDate: {
     fontSize: 13,
-    color: colors.primary[700],
+    color: colors.primary[400],
     fontWeight: '600',
   },
   eventTime: {
     fontSize: 13,
-    color: colors.gray[600],
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   eventLocation: {
     fontSize: 13,
-    color: colors.gray[600],
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   sermonCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     marginBottom: 16,
     padding: 12,
     flexDirection: 'row',
-    shadowColor: colors.primary[900],
+    shadowColor: colors.black,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
     shadowRadius: 6,
@@ -488,7 +527,7 @@ const styles = StyleSheet.create({
   sermonTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors.gray[900],
+    color: colors.text,
     marginBottom: 8,
     lineHeight: 22,
   },
@@ -498,12 +537,12 @@ const styles = StyleSheet.create({
   },
   sermonPreacher: {
     fontSize: 13,
-    color: colors.primary[700],
+    color: colors.primary[400],
     fontWeight: '600',
   },
   sermonDate: {
     fontSize: 13,
-    color: colors.gray[600],
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   bottomPadding: {

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { primaryColor, accentColor } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import { colors } from '../theme/colors';
 
 type RouteParams = {
   ChatRoom: {
@@ -29,6 +31,9 @@ interface Message {
 }
 
 const ChatRoomScreen = () => {
+  const { colors: themeColors } = useTheme();
+  const styles = createStyles(themeColors);
+  const primaryColor = themeColors.primary[600];
   const route = useRoute<RouteProp<RouteParams, 'ChatRoom'>>();
   const { department } = route.params || { department: 'General' };
   const { user } = useAuth();
@@ -137,14 +142,14 @@ const ChatRoomScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f3f4f6',
   },
   header: {
     padding: 16,
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
@@ -170,7 +175,7 @@ const styles = StyleSheet.create({
   },
   ownMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
   },
   otherMessage: {
     alignSelf: 'flex-start',
@@ -181,7 +186,7 @@ const styles = StyleSheet.create({
   senderName: {
     fontSize: 12,
     fontWeight: '600',
-    color: accentColor,
+    color: colors.warning,
     marginBottom: 4,
   },
   messageText: {
@@ -221,7 +226,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   sendButton: {
-    backgroundColor: primaryColor,
+    backgroundColor: colors.primary[600],
     borderRadius: 20,
     paddingHorizontal: 20,
     paddingVertical: 10,
