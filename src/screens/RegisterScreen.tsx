@@ -121,13 +121,13 @@ export default function RegisterScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Image
-            source={require('../../assets/images/Word of Covenant Logo.png')}
+            source={require('../../assets/images/New_Logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />
           <Text style={styles.title}>Join Our Family</Text>
-          <Text style={styles.subtitle}>Word of Covenant Church</Text>
-          <Text style={styles.verse}>"Light of the World" - John 8:12</Text>
+          <Text style={styles.subtitle}>Household Of Covenant And Faith Apostolic Ministry</Text>
+          <Text style={styles.verse}>"Household of the living God" - 1 Tim. 3:15</Text>
         </View>
 
         <View style={styles.form}>

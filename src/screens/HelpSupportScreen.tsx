@@ -121,7 +121,7 @@ export default function HelpSupportScreen({ navigation }: any) {
       icon: '📍',
       subtitle: 'Ikorodu, Lagos, Nigeria',
       action: () =>
-        Alert.alert('Location', 'Word of Covenant Church\nIkorodu, Lagos, Nigeria'),
+        Alert.alert('Location', 'Household Of Covenant And Faith Apostolic Ministry\nIkorodu, Lagos, Nigeria'),
     },
   ];
 
@@ -236,9 +236,9 @@ export default function HelpSupportScreen({ navigation }: any) {
 
       {/* App Info */}
       <View style={styles.appInfo}>
-        <Text style={styles.appInfoText}>Word of Covenant Church Mobile App</Text>
+        <Text style={styles.appInfoText}>Household Of Covenant And Faith Apostolic Ministry Mobile App</Text>
         <Text style={styles.appInfoText}>Version 1.0.0</Text>
-        <Text style={styles.appInfoText}>© 2026 Word of Covenant Church</Text>
+        <Text style={styles.appInfoText}>© 2026 Household Of Covenant And Faith Apostolic Ministry</Text>
       </View>
     </ScrollView>
   );

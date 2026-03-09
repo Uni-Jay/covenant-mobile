@@ -2,7 +2,7 @@ from PIL import Image, ImageDraw
 import os
 
 # Input and output paths
-input_path = "assets/images/Word of Covenant Logo.png"
+input_path = "assets/images/New_Logo.png"
 output_path = "assets/adaptive-icon.png"
 
 # Open the original logo

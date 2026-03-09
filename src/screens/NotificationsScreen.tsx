@@ -130,7 +130,7 @@ const NotificationsScreen = ({ navigation }: any) => {
     message += `We look forward to seeing you!\n\n`;
     message += `Blessings,\n`;
     message += `Church Administration\n`;
-    message += `Word of Covenant Church`;
+    message += `Household Of Covenant And Faith Apostolic Ministry`;
     
     setFormData(prev => ({ ...prev, message }));
   };

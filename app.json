@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "WCC",
-    "slug": "word-of-covenant",
-    "version": "1.0.0",
+    "name": "Household Of Covenant And Faith Apostolic Ministry",
+    "slug": "household-of-covenant",
+    "version": "1.0.1",
     "orientation": "portrait",
-    "icon": "./assets/images/Word of Covenant Logo.png",
+    "icon": "./assets/images/New_Logo.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/Word of Covenant Logo.png",
+      "image": "./assets/images/New_Logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#1e3a8a"
     },
@@ -27,7 +27,7 @@
         "backgroundColor": "#1e3a8a"
       },
       "splash": {
-        "image": "./assets/images/Word of Covenant Logo.png",
+        "image": "./assets/images/New_Logo.png",
         "resizeMode": "contain",
         "backgroundColor": "#1e3a8a"
       },
@@ -43,7 +43,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/images/Word of Covenant Logo.png"
+      "favicon": "./assets/images/New_Logo.png"
     },
     "scheme": "com.wordofcovenant.app",
     "plugins": [

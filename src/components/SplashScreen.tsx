@@ -56,7 +56,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
         >
           {/* Church Logo Image */}
           <Image
-            source={require('../../assets/images/Word of Covenant Logo.png')}
+            source={require('../../assets/images/New_Logo.png')}
             style={styles.logoImage}
             resizeMode="contain"
           />

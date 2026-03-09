@@ -171,7 +171,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 14,
-    color: colors.gold[500],
+    color: '#D4AF37',
   },
   statusCard: {
     backgroundColor: colors.white,
@@ -218,12 +218,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: 16,
   },
   joinButton: {
-    backgroundColor: colors.secondary[600],
+    backgroundColor: colors.secondary?.[600] ?? '#DB2777',
     paddingHorizontal: 32,
     paddingVertical: 12,
     borderRadius: 8,
     elevation: 3,
-    shadowColor: colors.secondary[900],
+    shadowColor: colors.secondary?.[900] ?? '#831843',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
@@ -338,7 +338,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderLeftWidth: 4,
-    borderLeftColor: colors.gold[700],
+    borderLeftColor: '#B8960C',
   },
   infoTitle: {
     fontSize: 18,

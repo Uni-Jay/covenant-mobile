@@ -1,7 +1,7 @@
 # Church Logo Usage in Mobile App
 
 ## Logo Location
-The church logo is located at: `mobile/assets/images/Word of Covenant Logo.jpg`
+The church logo is located at: `mobile/assets/images/New_Logo.png`
 
 ## Usage in Screens
 
@@ -9,7 +9,7 @@ The church logo is located at: `mobile/assets/images/Word of Covenant Logo.jpg`
 The logo is displayed at the top of the login screen:
 ```tsx
 <Image 
-  source={require('../../assets/images/Word of Covenant Logo.jpg')}
+  source={require('../../assets/images/New_Logo.png')}
   style={styles.logo}
   resizeMode="contain"
 />
@@ -36,7 +36,7 @@ logo: {
 
 ### To Use Custom Logo for App Icon:
 
-1. Convert `Word of Covenant Logo.jpg` to PNG format
+1. Convert `New_Logo.png` to PNG format
 2. Resize to 1024x1024px for icon
 3. Resize to 1200x1920px for splash screen
 4. Replace the files in `assets/` folder
@@ -51,7 +51,7 @@ import { Image } from 'react-native';
 
 // In your component JSX:
 <Image 
-  source={require('../assets/images/Word of Covenant Logo.jpg')}
+  source={require('../assets/images/New_Logo.png')}
   style={{ width: 100, height: 100 }}
   resizeMode="contain"
 />

@@ -107,7 +107,7 @@ export default function HomeScreenRedesign({ navigation }: any) {
             <Text style={styles.greeting}>{getGreeting()}</Text>
             <Text style={styles.userName}>{user?.fullName || 'Welcome!'}</Text>
             <Text style={styles.verse}>
-              "I am the light of the world" - John 8:12
+              "Household of the living God" - 1 Timothy 3:15
             </Text>
           </View>
         </Animated.View>

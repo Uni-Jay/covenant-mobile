@@ -1,6 +1,6 @@
-# Word of Covenant Church Mobile App
+# Household Of Covenant And Faith Apostolic Ministry Mobile App
 
-A comprehensive mobile application for Word of Covenant Church built with React Native Expo.
+A comprehensive mobile application for Household Of Covenant And Faith Apostolic Ministry built with React Native Expo.
 
 ## Features
 
@@ -172,7 +172,7 @@ mobile/
 
 ### Theme Colors
 
-The app uses Word of Covenant Church's brand colors:
+The app uses Household Of Covenant And Faith Apostolic Ministry's brand colors:
 - **Primary**: Burgundy/Maroon (#7f1d1d, #991b1b, #b91c1c)
 - **Gold**: Accent colors (#78350f, #92400e, #b45309)
 
@@ -253,4 +253,4 @@ For issues or questions:
 
 ## License
 
-Copyright © 2026 Word of Covenant Church. All rights reserved.
+Copyright © 2026 Household Of Covenant And Faith Apostolic Ministry. All rights reserved.

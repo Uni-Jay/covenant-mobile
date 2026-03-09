@@ -1,7 +1,7 @@
 # Mobile App Theme Update - Blue, White, Red
 
 ## Overview
-The entire mobile app has been updated to use a beautiful blue, white, and red color theme that matches the Word of Covenant Church logo. This creates a cohesive, patriotic design throughout the app.
+The entire mobile app has been updated to use a beautiful blue, white, and red color theme that matches the Household Of Covenant And Faith Apostolic Ministry logo. This creates a cohesive, patriotic design throughout the app.
 
 ## Color Palette (mobile/src/theme/colors.ts)
 
@@ -169,7 +169,7 @@ Used for non-critical elements:
 - Hover states
 
 ## Branding Consistency
-All colors derived from the Word of Covenant Church logo:
+All colors derived from the Household Of Covenant And Faith Apostolic Ministry logo:
 - **Blue**: Represents wisdom, trust, stability
 - **White**: Represents purity, light, truth
 - **Red**: Represents passion, love, action

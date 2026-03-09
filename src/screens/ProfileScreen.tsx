@@ -270,7 +270,7 @@ export default function ProfileScreen() {
 
       {/* App Info */}
       <View style={styles.appInfo}>
-        <Text style={styles.appInfoText}>Word of Covenant Church</Text>
+        <Text style={styles.appInfoText}>Household Of Covenant And Faith Apostolic Ministry</Text>
         <Text style={styles.appInfoText}>Version 1.0.0</Text>
       </View>
     </ScrollView>

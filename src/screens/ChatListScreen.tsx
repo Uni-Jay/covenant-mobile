@@ -1,29 +1,29 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
+  FlatList,
   ActivityIndicator,
   RefreshControl,
   Image,
-  Platform,
+  TextInput,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
-import { chatService } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
-import { colors } from '../theme/colors';
+import { chatService } from '../services/api';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 type RootStackParamList = {
   ChatRoom: { department: string };
   ChatRoomEnhanced: { groupId: number; groupName: string; onMarkRead?: () => void };
 };
-
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface GroupChat {
@@ -38,319 +38,319 @@ interface GroupChat {
   unread_count?: number;
 }
 
+// ─── Avatar helpers ───────────────────────────────────────────────────────────
+const AVATAR_COLORS = [
+  '#1D4ED8', '#7C3AED', '#BE185D', '#065F46',
+  '#B45309', '#0369A1', '#7E22CE', '#166534',
+];
+const getAvatarColor = (name: string) => {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+};
+const getInitials = (name: string) => {
+  const w = name.trim().split(/\s+/);
+  return w.length >= 2 ? (w[0][0] + w[1][0]).toUpperCase() : name.substring(0, 2).toUpperCase();
+};
+
+// ─── Time formatter ───────────────────────────────────────────────────────────
+const formatTime = (ts?: string): string => {
+  if (!ts) return '';
+  const date = new Date(ts);
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === now.toDateString())
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  if ((now.getTime() - date.getTime()) < 7 * 86400000)
+    return date.toLocaleDateString('en-US', { weekday: 'short' });
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+// ─── Last message snippet ─────────────────────────────────────────────────────
+const getLastMsgDisplay = (group: GroupChat): string => {
+  const m = group.last_message || '';
+  if (m.includes('/uploads/') || m.startsWith('http')) {
+    if (/\.(jpg|jpeg|png|gif)/i.test(m)) return '📷 Photo';
+    if (/\.(mp4|mov|avi)/i.test(m))      return '🎥 Video';
+    if (/\.(mp3|wav|m4a)/i.test(m))      return '🎤 Voice message';
+    if (/\.(pdf|doc|txt)/i.test(m))      return '📄 Document';
+    return '📎 File';
+  }
+  return m || group.description || 'No messages yet';
+};
+
+// ─── Image URL ────────────────────────────────────────────────────────────────
+const getImageUrl = (photo?: string) => {
+  if (!photo) return undefined;
+  return photo.startsWith('http') ? photo : `http://localhost:5000${photo}`;
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
 const ChatListScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuth();
   const { colors, theme } = useTheme();
   const styles = createStyles(colors);
-  const primaryColor = colors.primary[600];
-  const [groups, setGroups] = useState<GroupChat[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [groups,         setGroups]         = useState<GroupChat[]>([]);
+  const [filteredGroups, setFilteredGroups] = useState<GroupChat[]>([]);
+  const [isLoading,      setIsLoading]      = useState(true);
+  const [isRefreshing,   setIsRefreshing]   = useState(false);
+  const [searchQuery,    setSearchQuery]    = useState('');
+
+  useEffect(() => { loadGroups(); }, []);
+
+  useFocusEffect(
+    React.useCallback(() => { loadGroups(); }, [])
+  );
 
   useEffect(() => {
-    loadGroups();
-  }, []);
-
-  // Refresh groups when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      loadGroups();
-    }, [])
-  );
+    const q = searchQuery.trim().toLowerCase();
+    setFilteredGroups(q ? groups.filter(g => g.name.toLowerCase().includes(q)) : groups);
+  }, [searchQuery, groups]);
 
   const loadGroups = async () => {
     try {
-      console.log('[ChatList] Loading groups...');
       const data = await chatService.getGroups();
-      console.log('[ChatList] Groups response:', data);
-      console.log('[ChatList] Groups count:', data.groups?.length || 0);
       setGroups(data.groups || []);
-      console.log('[ChatList] Groups state updated');
-    } catch (error) {
-      console.error('Load groups error:', error);
+      setFilteredGroups(data.groups || []);
+    } catch (e) {
+      console.error('Load groups error:', e);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
   };
 
-  const onRefresh = async () => {
-    setIsRefreshing(true);
-    await loadGroups();
-  };
-
-  function getDepartmentIcon(department?: string): string {
-    if (!department) return 'ðŸ’¬';
-    const icons: { [key: string]: string } = {
-      'Choir': 'ðŸŽµ',
-      'Drama': 'ðŸŽ­',
-      'Media': 'ðŸ“¹',
-      'Ushering': 'ðŸ‘‹',
-      'Usher': 'ðŸ‘‹',
-      'Protocol': 'ðŸŽ–ï¸',
-      'Children': 'ðŸ‘¶',
-      'Youth': 'ðŸ§‘',
-      'Prayer': 'ðŸ™',
-      'Prayer Team': 'ðŸ™',
-      'Evangelism': 'ðŸ“¢',
-      'Welfare': 'ðŸ¤',
-      'Ministers': 'â›ª',
-    };
-    return icons[department] || 'ðŸ‘¥';
-  }
+  const onRefresh = async () => { setIsRefreshing(true); await loadGroups(); };
 
   const handleChatPress = (group: GroupChat) => {
-    navigation.navigate('ChatRoomEnhanced', { 
-      groupId: group.id, 
-      groupName: group.name,
-      onMarkRead: () => {
-        // Refresh the group list when messages are marked as read
-        loadGroups();
-      }
+    navigation.navigate('ChatRoomEnhanced', {
+      groupId:    group.id,
+      groupName:  group.name,
+      onMarkRead: loadGroups,
     });
   };
 
-  const getImageUrl = (photo?: string): string | undefined => {
-    if (!photo) return undefined;
-    if (photo.startsWith('http')) return photo;
-    const baseUrl = Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
-    return `${baseUrl}${photo}`;
-  };
-  const getLastMessageDisplay = (group: any) => {
-    const lastMsg = group.last_message || '';
-    
-    // Check if message is a media URL
-    if (lastMsg.includes('/uploads/') || lastMsg.startsWith('http')) {
-      if (lastMsg.includes('.jpg') || lastMsg.includes('.jpeg') || lastMsg.includes('.png') || lastMsg.includes('.gif')) {
-        return 'ðŸ“· Photo';
-      } else if (lastMsg.includes('.mp4') || lastMsg.includes('.mov') || lastMsg.includes('.avi')) {
-        return 'ðŸŽ¥ Video';
-      } else if (lastMsg.includes('.mp3') || lastMsg.includes('.wav') || lastMsg.includes('.m4a')) {
-        return 'ðŸŽ¤ Voice message';
-      } else if (lastMsg.includes('.pdf') || lastMsg.includes('.doc') || lastMsg.includes('.txt')) {
-        return 'ðŸ“„ Document';
-      }
-      return 'ðŸ“Ž File';
-    }
-    
-    return lastMsg || group.description || 'No messages yet';
-  };
-  const formatMessageTime = (timestamp?: string): string => {
-    if (!timestamp) return '';
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
+  // ── Render each row ──────────────────────────────────────────────────────────
+  const renderItem = ({ item, index }: { item: GroupChat; index: number }) => {
+    const imgUrl    = getImageUrl(item.photo);
+    const isLast    = index === filteredGroups.length - 1;
+    const hasUnread = (item.unread_count ?? 0) > 0;
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
-  // if (isLoading) {
-  //   return (
-  //     <SafeAreaView style={styles.container}>
-  //       <View style={styles.header}>
-  //         <Text style={styles.headerTitle}>Messages</Text>
-  //       </View>
-  //       <View style={styles.loadingContainer}>
-  //         <ActivityIndicator size="large" color={primaryColor} />
-  //       </View>
-  //     </SafeAreaView>
-  //   );
-  // }
-
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
-      <ScrollView 
-        style={styles.chatList}
-        refreshControl={
-          <RefreshControl 
-            refreshing={isRefreshing} 
-            onRefresh={onRefresh}
-            tintColor={colors.primary[600]}
-          />
-        }
+    return (
+      <TouchableOpacity
+        style={styles.chatItem}
+        onPress={() => handleChatPress(item)}
+        activeOpacity={0.6}
       >
-        {groups.map((group) => (
-          <TouchableOpacity
-            key={group.id}
-            style={[styles.chatItem, { backgroundColor: colors.surface }]}
-            onPress={() => handleChatPress(group)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.iconContainer, { backgroundColor: colors.primary[50] }]}>
-              {group.photo && getImageUrl(group.photo) ? (
-                <Image
-                  source={{ uri: getImageUrl(group.photo) }}
-                  style={styles.groupImage}
-                />
-              ) : (
-                <Text style={styles.icon}>
-                  {getDepartmentIcon(group.department || group.type || '')}
-                </Text>
-              )}
+        {/* Avatar */}
+        <View style={styles.avatarWrapper}>
+          {imgUrl ? (
+            <Image source={{ uri: imgUrl }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: getAvatarColor(item.name) }]}>
+              <Text style={styles.avatarInitials}>{getInitials(item.name)}</Text>
             </View>
-            
-            <View style={styles.chatInfo}>
-              <View style={styles.chatHeader}>
-                <Text style={[styles.chatName, { color: colors.text }]}>{group.name}</Text>
-                {group.last_message_time && (
-                  <Text style={[styles.timeText, { color: colors.textSecondary }]}>
-                    {formatMessageTime(group.last_message_time)}
-                  </Text>
-                )}
-              </View>
-              <View style={styles.lastMessageRow}>
-                <Text style={[styles.lastMessage, { color: colors.textSecondary }]} numberOfLines={1}>
-                  {getLastMessageDisplay(group)}
-                </Text>
-                {group.unread_count !== undefined && group.unread_count > 0 && (
-                  <View style={[styles.unreadBadge, { backgroundColor: colors.primary[600] }]}>
-                    <Text style={styles.unreadCount}>
-                      {group.unread_count > 99 ? '99+' : group.unread_count}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+          )}
+        </View>
 
-        {groups.length === 0 && !isLoading && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>ðŸ’¬</Text>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              No group chats available.{'\n'}
-              Join a department to see group chats!
+        {/* Info (with hairline separator except on last row) */}
+        <View style={[styles.infoCol, !isLast && styles.infoColBorder]}>
+          <View style={styles.topRow}>
+            <Text style={styles.chatName} numberOfLines={1}>{item.name}</Text>
+            <Text style={[styles.timeText, hasUnread && styles.timeTextUnread]}>
+              {formatTime(item.last_message_time)}
             </Text>
           </View>
-        )}
-
-        {isLoading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary[600]} />
+          <View style={styles.bottomRow}>
+            <Text
+              style={[styles.previewText, hasUnread && styles.previewTextUnread]}
+              numberOfLines={1}
+            >
+              {getLastMsgDisplay(item)}
+            </Text>
+            {hasUnread ? (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadText}>
+                  {(item.unread_count ?? 0) > 99 ? '99+' : item.unread_count}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.badgePlaceholder} />
+            )}
           </View>
-        )}
-      </ScrollView>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // ── Main render ──────────────────────────────────────────────────────────────
+  return (
+    <SafeAreaView style={styles.root} edges={['top']}>
+      <StatusBar backgroundColor={colors.primary[700]} barStyle="light-content" />
+
+      {/* WhatsApp Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Chats</Text>
+        <TouchableOpacity style={styles.headerIconBtn}>
+          <Text style={styles.headerMenuDot}>⋮</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchWrapper}>
+        <View style={styles.searchBar}>
+          <Text style={styles.searchIconEmoji}>🔍</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search"
+            placeholderTextColor="rgba(255,255,255,0.55)"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Text style={styles.searchClear}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* List */}
+      {isLoading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={colors.primary[600]} />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredGroups}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderItem}
+          style={styles.list}
+          contentContainerStyle={filteredGroups.length === 0 ? styles.emptyContent : undefined}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary[600]}
+              colors={[colors.primary[600]]}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>💬</Text>
+              <Text style={styles.emptyTitle}>
+                {searchQuery ? 'No results found' : 'No chats yet'}
+              </Text>
+              <Text style={styles.emptySub}>
+                {searchQuery
+                  ? 'Try a different search term'
+                  : 'Join a department to see group chats!'}
+              </Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 };
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const createStyles = (colors: any) => StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  chatList: {
-    flex: 1,
-  },
-  chatItem: {
+  root: { flex: 1, backgroundColor: colors.surface },
+
+  // Header
+  header: {
+    backgroundColor: colors.primary[700],
     flexDirection: 'row',
-    padding: 16,
-    marginHorizontal: 12,
-    marginVertical: 6,
-    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 15,
+    elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
   },
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
+  headerTitle: { color: '#FFFFFF', fontSize: 21, fontWeight: '800', letterSpacing: 0.2 },
+  headerIconBtn: { padding: 6 },
+  headerMenuDot: { color: 'rgba(255,255,255,0.85)', fontSize: 22, fontWeight: '700', letterSpacing: -1 },
+
+  // Search bar sits just below header (same primary bg so it merges)
+  searchWrapper: {
+    backgroundColor: colors.primary[700],
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+  },
+  searchBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 14,
-    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 24,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
-  groupImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  searchIconEmoji: { fontSize: 13, marginRight: 8 },
+  searchInput: { flex: 1, fontSize: 15, color: '#FFFFFF', paddingVertical: 0 },
+  searchClear: { fontSize: 13, color: 'rgba(255,255,255,0.75)', paddingLeft: 8 },
+
+  // List
+  list: { flex: 1, backgroundColor: colors.surface },
+  emptyContent: { flexGrow: 1 },
+  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+  // Chat item
+  chatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 14,
+    backgroundColor: colors.surface,
   },
-  icon: {
-    fontSize: 28,
+  avatarWrapper: { marginRight: 13, paddingVertical: 8 },
+  avatar:         { width: 54, height: 54, borderRadius: 27 },
+  avatarFallback: { justifyContent: 'center', alignItems: 'center' },
+  avatarInitials: { color: '#FFFFFF', fontSize: 18, fontWeight: '700', letterSpacing: 0.5 },
+
+  infoCol: { flex: 1, paddingVertical: 13, paddingRight: 14 },
+  infoColBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  chatInfo: {
-    flex: 1,
-  },
-  chatHeader: {
+
+  topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  chatName: {
-    fontSize: 17,
-    fontWeight: '700',
-    flex: 1,
-    marginRight: 8,
-  },
-  lastMessageRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-  },
-  timeText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  lastMessage: {
-    fontSize: 15,
-    flex: 1,
-  },
+  chatName: { fontSize: 16, fontWeight: '600', color: colors.text, flex: 1, marginRight: 8, letterSpacing: 0.05 },
+  timeText: { fontSize: 11.5, color: colors.textSecondary },
+  timeTextUnread: { color: '#25D366', fontWeight: '700' },
+
+  bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  previewText: { fontSize: 13.5, color: colors.textSecondary, flex: 1, marginRight: 8, lineHeight: 18 },
+  previewTextUnread: { color: colors.text, fontWeight: '500' },
+
   unreadBadge: {
-    minWidth: 24,
-    height: 24,
-    borderRadius: 12,
+    backgroundColor: '#25D366',
+    borderRadius: 11,
+    minWidth: 22,
+    height: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
   },
-  unreadCount: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  checkmarkContainer: {
-    marginLeft: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkmark: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  emptyState: {
-    padding: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyIcon: {
-    fontSize: 72,
-    marginBottom: 20,
-  },
-  emptyText: {
-    fontSize: 16,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
+  unreadText:      { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
+  badgePlaceholder: { width: 22, height: 22 },
+
+  // Empty state
+  emptyState:  { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 80 },
+  emptyIcon:   { fontSize: 60, marginBottom: 18 },
+  emptyTitle:  { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 8, letterSpacing: 0.1 },
+  emptySub:    { fontSize: 14, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: 36, lineHeight: 21 },
 });
 
 export default ChatListScreen;

@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   RefreshControl,
   Image,
   TextInput,
@@ -13,7 +14,10 @@ import {
   Modal,
   FlatList,
   Dimensions,
+  KeyboardAvoidingView,
   Platform,
+  Animated,
+  Share,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Video, ResizeMode } from 'expo-av';
@@ -22,8 +26,32 @@ import { feedService, api } from '../services';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// ─── Facebook-style reactions ────────────────────────────────────────────────
+const REACTIONS = [
+  { key: 'like',  icon: '\uD83D\uDC4D', label: 'Like',  color: '#1877F2' },
+  { key: 'love',  icon: '\u2764\uFE0F', label: 'Love',  color: '#F33E58' },
+  { key: 'haha',  icon: '\uD83D\uDE02', label: 'Haha',  color: '#F7B125' },
+  { key: 'wow',   icon: '\uD83D\uDE2E', label: 'Wow',   color: '#F7B125' },
+  { key: 'sad',   icon: '\uD83D\uDE22', label: 'Sad',   color: '#F7B125' },
+  { key: 'angry', icon: '\uD83D\uDE21', label: 'Angry', color: '#E9710F' },
+] as const;
+type ReactionKey = 'like' | 'love' | 'haha' | 'wow' | 'sad' | 'angry';
+
+const getReaction = (key?: string) =>
+  REACTIONS.find(r => r.key === key) ?? REACTIONS[0];
+
+// ─── Post type badge config ───────────────────────────────────────────────────
+const POST_TYPE: Record<string, { label: string; color: string; bg: string }> = {
+  announcement: { label: '\uD83D\uDCE2 Announcement', color: '#E65100', bg: '#FFF3E0' },
+  testimony:    { label: '\uD83D\uDE4C Testimony',    color: '#1565C0', bg: '#E3F2FD' },
+  sermon_clip:  { label: '\uD83C\uDF99\uFE0F Sermon', color: '#4A148C', bg: '#F3E5F5' },
+  scripture:    { label: '\uD83D\uDCD6 Scripture',    color: '#1B5E20', bg: '#E8F5E9' },
+  general:      { label: '',                           color: '',        bg: ''        },
+};
+
+// ─── Interfaces ──────────────────────────────────────────────────────────────
 interface Post {
   id: number;
   user_id: number;
@@ -39,6 +67,7 @@ interface Post {
   likes_count: number;
   comments_count: number;
   user_liked: boolean;
+  user_reaction?: string;
   created_at: string;
 }
 
@@ -52,7 +81,7 @@ interface Comment {
   created_at: string;
 }
 
-interface User {
+interface Member {
   id: number;
   first_name: string;
   last_name: string;
@@ -60,119 +89,79 @@ interface User {
   profile_image?: string;
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 const SERVER_BASE = 'http://localhost:5000';
-const getPhotoUrl = (path: string | null | undefined): string | null => {
+const getPhotoUrl = (path?: string | null): string | null => {
   if (!path) return null;
   if (path.startsWith('http')) return path;
   return `${SERVER_BASE}${path}`;
 };
 
+const formatTs = (ts: string): string => {
+  const date = new Date(ts);
+  const diff = Date.now() - date.getTime();
+  const m = Math.floor(diff / 60000);
+  const h = Math.floor(m / 60);
+  const d = Math.floor(h / 24);
+  if (m < 1) return 'Just now';
+  if (m < 60) return `${m}m`;
+  if (h < 24) return `${h}h`;
+  if (d < 7) return `${d}d`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+// ─── Component ───────────────────────────────────────────────────────────────
 export default function FeedScreen() {
   const { user } = useAuth();
   const { colors } = useTheme();
   const styles = createStyles(colors);
+
+  // Feed
   const [posts, setPosts] = useState<Post[]>([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [filterType, setFilterType] = useState('all');
+
+  // Composer
   const [newPost, setNewPost] = useState('');
   const [postType, setPostType] = useState('general');
-  const [filterType, setFilterType] = useState('all');
+  const [isPosting, setIsPosting] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedMediaType, setSelectedMediaType] = useState<'image' | 'video' | null>(null);
+  const [taggedUsers, setTaggedUsers] = useState<Member[]>([]);
+
+  // Comments modal
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [isSendingComment, setIsSendingComment] = useState(false);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [selectedMediaType, setSelectedMediaType] = useState<'image' | 'video' | null>(null);
-  const [taggedUsers, setTaggedUsers] = useState<User[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+
+  // Tag modal
   const [showTagModal, setShowTagModal] = useState(false);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [allMembers, setAllMembers] = useState<Member[]>([]);
+  const [memberSearch, setMemberSearch] = useState('');
 
-  useEffect(() => {
-    loadPosts();
-    loadUsers();
-  }, [filterType]);
+  // Reaction picker
+  const [reactionMenuPostId, setReactionMenuPostId] = useState<number | null>(null);
+  const reactionAnim = useRef(new Animated.Value(0)).current;
 
-  const loadUsers = async () => {
-    try {
-      const response = await api.get('/auth/users');
-      setAllUsers(response.data.users || []);
-    } catch (error: any) {
-      console.error('Failed to load users:', error);
-    }
-  };
+  // Post options bottom sheet
+  const [optionsPost, setOptionsPost] = useState<Post | null>(null);
+  const [showOptionsSheet, setShowOptionsSheet] = useState(false);
 
-  const pickImage = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need camera roll permissions to select media');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        setSelectedImage(result.assets[0].uri);
-        setSelectedMediaType('image');
-      }
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to pick image');
-    }
-  };
-
-  const pickVideo = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need camera roll permissions to select videos');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['videos'],
-        allowsEditing: false,
-        quality: 0.8,
-        videoMaxDuration: 60,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        setSelectedImage(result.assets[0].uri);
-        setSelectedMediaType('video');
-      }
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to pick video');
-    }
-  };
-
-  const removeImage = () => {
-    setSelectedImage(null);
-    setSelectedMediaType(null);
-  };
-
-  const toggleTagUser = (selectedUser: User) => {
-    setTaggedUsers(prev => {
-      const isAlreadyTagged = prev.some(u => u.id === selectedUser.id);
-      if (isAlreadyTagged) {
-        return prev.filter(u => u.id !== selectedUser.id);
-      } else {
-        return [...prev, selectedUser];
-      }
-    });
-  };
+  // ─── Data loading ──────────────────────────────────────────────────────────
+  useEffect(() => { loadPosts(); }, [filterType]);
+  useEffect(() => { loadMembers(); }, []);
 
   const loadPosts = async () => {
     try {
       setIsLoading(true);
       const data = await feedService.getPosts(filterType);
-      setPosts(data.posts);
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
+      setPosts(data.posts ?? []);
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
     } finally {
       setIsLoading(false);
     }
@@ -184,339 +173,420 @@ export default function FeedScreen() {
     setIsRefreshing(false);
   };
 
-  const handleCreatePost = async () => {
-    if (!newPost.trim()) {
-      Alert.alert('Error', 'Please enter some content');
+  const loadMembers = async () => {
+    try {
+      const res = await api.get('/auth/users');
+      setAllMembers(res.data.users ?? []);
+    } catch {}
+  };
+
+  // ─── Composer actions ─────────────────────────────────────────────────────
+  const pickMedia = async (type: 'image' | 'video') => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'Allow photo library access to attach media.');
       return;
     }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: type === 'image' ? ['images'] : ['videos'],
+      allowsEditing: type === 'image',
+      aspect: [4, 3],
+      quality: 0.8,
+      videoMaxDuration: 60,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImage(result.assets[0].uri);
+      setSelectedMediaType(type);
+    }
+  };
 
+  const removeMedia = () => { setSelectedImage(null); setSelectedMediaType(null); };
+
+  const toggleTag = (member: Member) =>
+    setTaggedUsers(prev =>
+      prev.some(u => u.id === member.id)
+        ? prev.filter(u => u.id !== member.id)
+        : [...prev, member]
+    );
+
+  const handleCreatePost = async () => {
+    if (!newPost.trim() && !selectedImage) return;
     try {
-      const formData = new FormData();
-      formData.append('content', newPost);
-      formData.append('postType', postType);
-      
-      // Add tagged users
-      if (taggedUsers.length > 0) {
-        formData.append('taggedUsers', JSON.stringify(taggedUsers.map(u => u.id)));
-      }
-      
-      // Add image if selected
+      setIsPosting(true);
+      const fd = new FormData();
+      fd.append('content', newPost);
+      fd.append('postType', postType);
+      if (taggedUsers.length > 0)
+        fd.append('taggedUsers', JSON.stringify(taggedUsers.map(u => u.id)));
       if (selectedImage) {
-        const filename = selectedImage.split('/').pop() || 'media.jpg';
-        const match = /\.(\w+)$/.exec(filename);
-        const extension = match ? match[1] : 'jpg';
-        const type = selectedMediaType === 'video' 
-          ? `video/${extension}` 
-          : `image/${extension}`;
-        
-        formData.append('media', {
-          uri: selectedImage,
-          name: filename,
-          type: type,
-        } as any);
+        const name = selectedImage.split('/').pop() ?? 'media.jpg';
+        const ext = /\.(\w+)$/.exec(name)?.[1] ?? 'jpg';
+        fd.append('media', { uri: selectedImage, name, type: selectedMediaType === 'video' ? `video/${ext}` : `image/${ext}` } as any);
       }
-      
-      await api.post('/feed', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      
-      setNewPost('');
-      setSelectedImage(null);
-      setSelectedMediaType(null);
-      setTaggedUsers([]);
-      Alert.alert('Success', 'Post created successfully');
-      loadPosts();
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to create post');
+      await api.post('/feed', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setNewPost(''); setSelectedImage(null); setSelectedMediaType(null);
+      setTaggedUsers([]); setPostType('general');
+      await loadPosts();
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? 'Failed to create post');
+    } finally {
+      setIsPosting(false);
     }
   };
 
-  const handleLikePost = async (postId: number) => {
+  // ─── Reactions ────────────────────────────────────────────────────────────
+  const openReactionMenu = (postId: number) => {
+    setReactionMenuPostId(postId);
+    Animated.spring(reactionAnim, { toValue: 1, useNativeDriver: true, tension: 140, friction: 7 }).start();
+  };
+
+  const closeReactionMenu = () => {
+    Animated.timing(reactionAnim, { toValue: 0, duration: 140, useNativeDriver: true }).start(
+      () => setReactionMenuPostId(null)
+    );
+  };
+
+  const handleReact = async (post: Post, reactionKey: string) => {
+    closeReactionMenu();
+    const wasLiked = post.user_liked;
+    const prevReaction = post.user_reaction;
+    const removingReaction = wasLiked && prevReaction === reactionKey;
+
+    // Optimistic update
+    setPosts(prev => prev.map(p =>
+      p.id !== post.id ? p : {
+        ...p,
+        user_liked: !removingReaction,
+        user_reaction: removingReaction ? undefined : reactionKey,
+        likes_count: removingReaction
+          ? p.likes_count - 1
+          : wasLiked ? p.likes_count : p.likes_count + 1,
+      }
+    ));
+
     try {
-      await feedService.likePost(postId);
-      // Update local state
-      setPosts(posts.map(post => 
-        post.id === postId 
-          ? { 
-              ...post, 
-              user_liked: !post.user_liked,
-              likes_count: post.user_liked ? post.likes_count - 1 : post.likes_count + 1
-            }
-          : post
+      await feedService.likePost(post.id);
+    } catch {
+      // Rollback
+      setPosts(prev => prev.map(p =>
+        p.id !== post.id ? p : { ...p, user_liked: wasLiked, user_reaction: prevReaction, likes_count: post.likes_count }
       ));
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
     }
   };
 
-  const handleOpenComments = async (post: Post) => {
+  const handleQuickLike = (post: Post) => {
+    if (reactionMenuPostId === post.id) { closeReactionMenu(); return; }
+    handleReact(post, post.user_liked ? '' : 'like');
+  };
+
+  // ─── Post options ─────────────────────────────────────────────────────────
+  const openOptions = (post: Post) => { setOptionsPost(post); setShowOptionsSheet(true); };
+  const closeOptions = () => setShowOptionsSheet(false);
+
+  const confirmDeletePost = () => {
+    closeOptions();
+    Alert.alert('Delete Post', 'This will permanently delete your post.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive',
+        onPress: async () => {
+          if (!optionsPost) return;
+          try {
+            await feedService.deletePost(optionsPost.id);
+            setPosts(prev => prev.filter(p => p.id !== optionsPost.id));
+          } catch (e: any) { Alert.alert('Error', e.message); }
+        },
+      },
+    ]);
+  };
+
+  const handleSharePost = async (post: Post) => {
     try {
-      setSelectedPost(post);
+      await Share.share({ message: `${post.first_name} ${post.last_name}: ${post.content}`, title: 'Word of Covenant' });
+    } catch {}
+  };
+
+  // ─── Comments ─────────────────────────────────────────────────────────────
+  const openComments = async (post: Post) => {
+    setSelectedPost(post);
+    setComments([]);
+    setShowCommentsModal(true);
+    setCommentsLoading(true);
+    try {
       const data = await feedService.getPost(post.id);
-      setComments(data.comments);
-      setShowCommentsModal(true);
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
+      setComments(data.comments ?? []);
+    } catch {} finally {
+      setCommentsLoading(false);
     }
   };
 
   const handleAddComment = async () => {
-    if (!newComment.trim() || !selectedPost) return;
-
+    if (!newComment.trim() || !selectedPost || isSendingComment) return;
+    const text = newComment.trim();
+    setNewComment('');
+    setIsSendingComment(true);
     try {
-      await feedService.addComment(selectedPost.id, newComment);
-      setNewComment('');
-      // Reload comments
+      await feedService.addComment(selectedPost.id, text);
       const data = await feedService.getPost(selectedPost.id);
-      setComments(data.comments);
-      // Update comments count
-      setPosts(posts.map(post => 
-        post.id === selectedPost.id 
-          ? { ...post, comments_count: post.comments_count + 1 }
-          : post
+      setComments(data.comments ?? []);
+      setPosts(prev => prev.map(p =>
+        p.id === selectedPost.id ? { ...p, comments_count: p.comments_count + 1 } : p
       ));
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
-    }
+      setSelectedPost(prev => prev ? { ...prev, comments_count: prev.comments_count + 1 } : prev);
+    } catch { setNewComment(text); }
+    finally { setIsSendingComment(false); }
   };
 
-  const handleDeletePost = async (postId: number) => {
-    Alert.alert(
-      'Delete Post',
-      'Are you sure you want to delete this post?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await feedService.deletePost(postId);
-              setPosts(posts.filter(p => p.id !== postId));
-              Alert.alert('Success', 'Post deleted successfully');
-            } catch (error: any) {
-              Alert.alert('Error', error.message);
-            }
-          },
-        },
-      ]
-    );
-  };
+  // ─── Render helpers ───────────────────────────────────────────────────────
+  const FILTER_TABS = [
+    { key: 'all',          label: '\uD83C\uDFE0 Home'    },
+    { key: 'announcement', label: '\uD83D\uDCE2 News'    },
+    { key: 'testimony',    label: '\uD83D\uDE4C Praise'  },
+    { key: 'sermon_clip',  label: '\uD83C\uDF99\uFE0F Sermons' },
+    { key: 'scripture',    label: '\uD83D\uDCD6 Word'    },
+    { key: 'general',      label: '\uD83D\uDCAC General' },
+  ];
 
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString();
-  };
-
-  const getPostTypeStyle = (type: string) => {
-    const map: Record<string, { bg: string; text: string; label: string }> = {
-      announcement: { bg: '#FEF3C7', text: '#92400E', label: 'Announcement' },
-      testimony:    { bg: '#D1FAE5', text: '#065F46', label: 'Testimony' },
-      sermon_clip:  { bg: '#EDE9FE', text: '#5B21B6', label: 'Sermon' },
-      scripture:    { bg: '#DBEAFE', text: '#1E40AF', label: 'Scripture' },
-      general:      { bg: '#F3F4F6', text: '#374151', label: 'General' },
-    };
-    return map[type] || map.general;
-  };
+  const currentUserPhoto = getPhotoUrl((user as any)?.photo);
+  const meInitial = ((user as any)?.firstName ?? user?.fullName ?? 'U').charAt(0).toUpperCase();
+  const canPost = (newPost.trim().length > 0 || !!selectedImage) && !isPosting;
 
   const renderPost = ({ item: post }: { item: Post }) => {
-    const typeStyle = getPostTypeStyle(post.post_type);
     const photoUri = getPhotoUrl(post.profile_image);
     const initials = `${post.first_name.charAt(0)}${post.last_name.charAt(0)}`;
+    const typeInfo = POST_TYPE[post.post_type] ?? POST_TYPE.general;
+    const myReaction = post.user_reaction ? getReaction(post.user_reaction) : null;
+    const isMenuOpen = reactionMenuPostId === post.id;
+
     return (
-      <View style={[styles.postCard, post.is_pinned && styles.pinnedPost]}>
-        {/* Pinned indicator */}
+      <View style={styles.postCard}>
+        {/* Pinned banner */}
         {post.is_pinned && (
-          <View style={styles.pinnedBadge}>
-            <Text style={styles.pinnedText}>📌  Pinned</Text>
+          <View style={styles.pinnedBanner}>
+            <Text style={styles.pinnedBannerText}>{'\uD83D\uDCCC'}  Pinned post</Text>
           </View>
         )}
 
-        {/* Header */}
+        {/* ── Header ── */}
         <View style={styles.postHeader}>
-          <View style={styles.avatarWrap}>
-            {photoUri ? (
-              <Image source={{ uri: photoUri }} style={styles.avatarImg} />
-            ) : (
-              <LinearGradient colors={[colors.primary[500], colors.primary[700]]} style={styles.avatarImg}>
-                <Text style={styles.avatarInitials}>{initials}</Text>
-              </LinearGradient>
-            )}
-          </View>
-          <View style={styles.posterMeta}>
-            <Text style={styles.posterName}>{post.first_name} {post.last_name}</Text>
-            <View style={styles.metaRow}>
-              <Text style={styles.postTime}>{formatTimestamp(post.created_at)}</Text>
-              {post.post_type !== 'general' && (
-                <View style={[styles.typePill, { backgroundColor: typeStyle.bg }]}>
-                  <Text style={[styles.typePillText, { color: typeStyle.text }]}>{typeStyle.label}</Text>
-                </View>
+          <View style={styles.postHeaderLeft}>
+            {photoUri
+              ? <Image source={{ uri: photoUri }} style={styles.postAvatar} />
+              : (
+                <LinearGradient colors={[colors.primary[500], colors.primary[700]]} style={styles.postAvatar}>
+                  <Text style={styles.postAvatarText}>{initials}</Text>
+                </LinearGradient>
               )}
+            <View style={styles.postAuthorBlock}>
+              <Text style={styles.postAuthorName}>{post.first_name} {post.last_name}</Text>
+              {typeInfo.label ? (
+                <View style={[styles.typeBadge, { backgroundColor: typeInfo.bg }]}>
+                  <Text style={[styles.typeBadgeText, { color: typeInfo.color }]}>{typeInfo.label}</Text>
+                </View>
+              ) : null}
+              <View style={styles.postMetaRow}>
+                <Text style={styles.postTimestamp}>{formatTs(post.created_at)}</Text>
+                <Text style={styles.postMetaDot}> · </Text>
+                <Text style={styles.postScope}>{'\uD83C\uDF10'}</Text>
+              </View>
             </View>
           </View>
-          {post.user_id === user?.id && (
-            <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDeletePost(post.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.deleteDot}>•••</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={styles.moreBtn}
+            onPress={() => openOptions(post)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.moreBtnText}>···</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Content */}
-        <Text style={styles.postContent}>{post.content}</Text>
+        {/* ── Content ── */}
+        {post.content ? <Text style={styles.postContent}>{post.content}</Text> : null}
 
-        {/* Media */}
+        {/* ── Media ── */}
         {post.media_url && post.media_type === 'image' && (
-          <View style={styles.mediaContainer}>
-            <Image source={{ uri: post.media_url }} style={styles.postMedia} resizeMode="cover" />
-          </View>
+          <Image source={{ uri: getPhotoUrl(post.media_url) ?? post.media_url }} style={styles.postMediaImg} resizeMode="cover" />
         )}
         {post.media_url && post.media_type === 'video' && (
-          <View style={styles.mediaContainer}>
-            <Video source={{ uri: post.media_url }} style={styles.postMedia} useNativeControls resizeMode={ResizeMode.CONTAIN} isLooping />
+          <Video source={{ uri: getPhotoUrl(post.media_url) ?? post.media_url }} style={styles.postMediaImg} useNativeControls resizeMode={ResizeMode.CONTAIN} isLooping />
+        )}
+
+        {/* ── Counts row ── */}
+        {(post.likes_count > 0 || post.comments_count > 0) && (
+          <View style={styles.countsRow}>
+            {post.likes_count > 0 && (
+              <View style={styles.reactionSummary}>
+                <View style={[styles.reactionBubble, { backgroundColor: myReaction?.color ?? '#1877F2' }]}>
+                  <Text style={styles.reactionBubbleText}>{myReaction?.icon ?? '\uD83D\uDC4D'}</Text>
+                </View>
+                <Text style={styles.likeCountText}>{post.likes_count}</Text>
+              </View>
+            )}
+            {post.comments_count > 0 && (
+              <TouchableOpacity onPress={() => openComments(post)}>
+                <Text style={styles.commentCountText}>
+                  {post.comments_count} {post.comments_count === 1 ? 'comment' : 'comments'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
-        {/* Divider */}
         <View style={styles.actionDivider} />
 
-        {/* Actions */}
-        <View style={styles.postActions}>
-          <TouchableOpacity style={styles.actionBtn} onPress={() => handleLikePost(post.id)} activeOpacity={0.7}>
-            <Text style={[styles.actionIcon, post.user_liked && styles.likedIcon]}>
-              {post.user_liked ? '♥' : '♡'}
+        {/* ── Reaction popup (long-press Like) ── */}
+        {isMenuOpen && (
+          <TouchableWithoutFeedback onPress={closeReactionMenu}>
+            <View style={styles.reactionOverlay}>
+              <Animated.View style={[
+                styles.reactionPopup,
+                {
+                  opacity: reactionAnim,
+                  transform: [{
+                    scale: reactionAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }),
+                  }],
+                },
+              ]}>
+                {REACTIONS.map(r => (
+                  <TouchableOpacity
+                    key={r.key}
+                    style={styles.reactionOption}
+                    onPress={() => handleReact(post, r.key)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={styles.reactionOptionIcon}>{r.icon}</Text>
+                    <Text style={[styles.reactionOptionLabel, { color: r.color }]}>{r.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </Animated.View>
+            </View>
+          </TouchableWithoutFeedback>
+        )}
+
+        {/* ── Action bar ── */}
+        <View style={styles.actionBar}>
+          <TouchableOpacity
+            style={styles.actionBarBtn}
+            onPress={() => handleQuickLike(post)}
+            onLongPress={() => openReactionMenu(post.id)}
+            delayLongPress={300}
+            activeOpacity={0.6}
+          >
+            <Text style={[styles.actionBarIcon, post.user_liked && { color: myReaction?.color ?? '#1877F2' }]}>
+              {post.user_liked && myReaction ? myReaction.icon : '\uD83D\uDC4D'}
             </Text>
-            <Text style={[styles.actionLabel, post.user_liked && styles.likedLabel]}>
-              {post.likes_count > 0 ? post.likes_count : ''} {post.likes_count === 1 ? 'Like' : 'Like'}
+            <Text style={[styles.actionBarLabel, post.user_liked && { color: myReaction?.color ?? '#1877F2', fontWeight: '700' }]}>
+              {post.user_liked && myReaction ? myReaction.label : 'Like'}
             </Text>
           </TouchableOpacity>
-          <View style={styles.actionSep} />
-          <TouchableOpacity style={styles.actionBtn} onPress={() => handleOpenComments(post)} activeOpacity={0.7}>
-            <Text style={styles.actionIcon}>💬</Text>
-            <Text style={styles.actionLabel}>
-              {post.comments_count > 0 ? post.comments_count : ''} Comment
-            </Text>
+
+          <View style={styles.actionBarSep} />
+
+          <TouchableOpacity
+            style={styles.actionBarBtn}
+            onPress={() => openComments(post)}
+            activeOpacity={0.6}
+          >
+            <Text style={styles.actionBarIcon}>{'\uD83D\uDCAC'}</Text>
+            <Text style={styles.actionBarLabel}>Comment</Text>
+          </TouchableOpacity>
+
+          <View style={styles.actionBarSep} />
+
+          <TouchableOpacity
+            style={styles.actionBarBtn}
+            onPress={() => handleSharePost(post)}
+            activeOpacity={0.6}
+          >
+            <Text style={styles.actionBarIcon}>{'↗️'}</Text>
+            <Text style={styles.actionBarLabel}>Share</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   };
 
-  const filterConfig: { key: string; label: string; icon: string }[] = [
-    { key: 'all',          label: 'All',          icon: '🏠' },
-    { key: 'announcement', label: 'Announcements', icon: '📢' },
-    { key: 'testimony',    label: 'Testimonies',   icon: '🙌' },
-    { key: 'sermon_clip',  label: 'Sermons',       icon: '🎙️' },
-    { key: 'scripture',    label: 'Scripture',     icon: '📖' },
-    { key: 'general',      label: 'General',       icon: '💬' },
-  ];
-
-  if (isLoading) {
+  if (isLoading && posts.length === 0) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color={colors.primary[600]} />
-        <Text style={styles.loadingText}>Loading feed...</Text>
+        <ActivityIndicator size="large" color="#1877F2" />
+        <Text style={styles.loadingText}>Loading posts...</Text>
       </View>
     );
   }
 
-  const currentUserPhoto = getPhotoUrl((user as any)?.photo);
-  const currentUserInitials = user?.fullName?.charAt(0) || user?.firstName?.charAt(0) || 'U';
-
   return (
     <View style={styles.container}>
-      {/* Filter Tabs */}
-      <View style={styles.filterBar}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterTabsContent}
-        >
-          {filterConfig.map(({ key, label, icon }) => (
+
+      {/* ═══ TOP BAR ═══════════════════════════════════════════════════════ */}
+      <View style={styles.topBar}>
+        <Text style={styles.topBarTitle}>Word of Covenant</Text>
+        <View style={styles.topBarIcons}>
+          <TouchableOpacity style={styles.topBarIcon}>
+            <Text style={styles.topBarIconText}>{'\uD83D\uDD0D'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.topBarIcon}>
+            <Text style={styles.topBarIconText}>{'\uD83D\uDD14'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* ═══ NAV FILTER TABS ════════════════════════════════════════════════ */}
+      <View style={styles.navBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navBarContent}>
+          {FILTER_TABS.map(({ key, label }) => (
             <TouchableOpacity
               key={key}
-              style={[styles.filterTab, filterType === key && styles.filterTabActive]}
+              style={[styles.navTab, filterType === key && styles.navTabActive]}
               onPress={() => setFilterType(key)}
               activeOpacity={0.75}
             >
-              {filterType === key ? (
-                <LinearGradient
-                  colors={[colors.primary[600], colors.primary[800]]}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                  style={styles.filterTabInner}
-                >
-                  <Text style={styles.filterTabIcon}>{icon}</Text>
-                  <Text style={styles.filterTabLabelActive}>{label}</Text>
-                </LinearGradient>
-              ) : (
-                <View style={styles.filterTabInner}>
-                  <Text style={styles.filterTabIcon}>{icon}</Text>
-                  <Text style={styles.filterTabLabel}>{label}</Text>
-                </View>
-              )}
+              <Text style={[styles.navTabText, filterType === key && styles.navTabTextActive]}>{label}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
+      {/* ═══ FEED ═══════════════════════════════════════════════════════════ */}
       <FlatList
         data={posts}
         renderItem={renderPost}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={item => item.id.toString()}
+        style={styles.feed}
+        contentContainerStyle={styles.feedContent}
         refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            colors={[colors.primary[600]]}
-            tintColor={colors.primary[600]}
-          />
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={['#1877F2']} tintColor="#1877F2" />
         }
-        contentContainerStyle={styles.feedList}
         ListHeaderComponent={
-          /* ─── Composer ─── */
-          <View style={styles.composer}>
-            <View style={styles.composerTop}>
-              {currentUserPhoto ? (
-                <Image source={{ uri: currentUserPhoto }} style={styles.composerAvatar} />
-              ) : (
-                <LinearGradient colors={[colors.primary[500], colors.primary[700]]} style={styles.composerAvatar}>
-                  <Text style={styles.composerAvatarText}>{currentUserInitials}</Text>
-                </LinearGradient>
-              )}
+          /* ── Composer card ── */
+          <View style={styles.composerCard}>
+            <View style={styles.composerRow}>
+              {currentUserPhoto
+                ? <Image source={{ uri: currentUserPhoto }} style={styles.composerAvatar} />
+                : (
+                  <LinearGradient colors={[colors.primary[500], colors.primary[700]]} style={styles.composerAvatar}>
+                    <Text style={styles.composerAvatarText}>{meInitial}</Text>
+                  </LinearGradient>
+                )}
               <TextInput
                 style={styles.composerInput}
-                placeholder="What's on your heart today?"
-                placeholderTextColor={colors.gray[400]}
+                placeholder={`What's on your mind, ${(user as any)?.firstName ?? user?.fullName?.split(' ')[0] ?? 'friend'}?`}
+                placeholderTextColor="#90949C"
                 value={newPost}
                 onChangeText={setNewPost}
                 multiline
               />
             </View>
 
-            {/* Media previews */}
-            {selectedImage && selectedMediaType === 'image' && (
-              <View style={styles.previewWrap}>
-                <Image source={{ uri: selectedImage }} style={styles.mediaPreview} />
-                <TouchableOpacity style={styles.removeMedia} onPress={removeImage}>
-                  <Text style={styles.removeMediaText}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            {selectedImage && selectedMediaType === 'video' && (
-              <View style={styles.previewWrap}>
-                <Video source={{ uri: selectedImage }} style={styles.mediaPreview} useNativeControls resizeMode={ResizeMode.CONTAIN} isLooping />
-                <TouchableOpacity style={styles.removeMedia} onPress={removeImage}>
-                  <Text style={styles.removeMediaText}>✕</Text>
+            {/* Media preview */}
+            {selectedImage && (
+              <View style={styles.composerPreview}>
+                {selectedMediaType === 'image'
+                  ? <Image source={{ uri: selectedImage }} style={styles.composerPreviewImg} resizeMode="cover" />
+                  : <Video source={{ uri: selectedImage }} style={styles.composerPreviewImg} useNativeControls resizeMode={ResizeMode.CONTAIN} isLooping />
+                }
+                <TouchableOpacity style={styles.composerRemoveBtn} onPress={removeMedia}>
+                  <Text style={styles.composerRemoveText}>{'\u2715'}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -525,193 +595,308 @@ export default function FeedScreen() {
             {taggedUsers.length > 0 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagChipRow}>
                 {taggedUsers.map(tu => (
-                  <TouchableOpacity key={tu.id} style={styles.tagChip} onPress={() => toggleTagUser(tu)}>
-                    <Text style={styles.tagChipText}>@{tu.first_name} {tu.last_name}  ✕</Text>
+                  <TouchableOpacity key={tu.id} style={styles.tagChip} onPress={() => toggleTag(tu)}>
+                    <Text style={styles.tagChipText}>with {tu.first_name} {'\u2715'}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
             )}
 
-            {/* Bottom toolbar */}
-            <View style={styles.composerToolbar}>
-              {/* Left: media buttons */}
-              <View style={styles.composerMediaBtns}>
-                <TouchableOpacity style={styles.composerMediaBtn} onPress={pickImage}>
-                  <Text style={styles.composerMediaIcon}>🖼️</Text>
+            {/* Post type selector */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.composerTypeRow}>
+              {['general', 'testimony', 'scripture', 'announcement'].map(t => (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.composerTypeChip, postType === t && styles.composerTypeChipActive]}
+                  onPress={() => setPostType(t)}
+                >
+                  <Text style={[styles.composerTypeChipText, postType === t && styles.composerTypeChipTextActive]}>
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.composerMediaBtn} onPress={pickVideo}>
-                  <Text style={styles.composerMediaIcon}>🎬</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.composerMediaBtn} onPress={() => setShowTagModal(true)}>
-                  <Text style={styles.composerMediaIcon}>@ </Text>
-                </TouchableOpacity>
-              </View>
+              ))}
+            </ScrollView>
 
-              {/* Right: type + post */}
-              <View style={styles.composerRight}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {['general', 'testimony', 'scripture'].map(t => (
-                    <TouchableOpacity
-                      key={t}
-                      style={[styles.typeChip, postType === t && styles.typeChipActive]}
-                      onPress={() => setPostType(t)}
-                    >
-                      <Text style={[styles.typeChipText, postType === t && styles.typeChipTextActive]}>
-                        {t.charAt(0).toUpperCase() + t.slice(1)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-                <TouchableOpacity style={styles.postBtn} onPress={handleCreatePost} activeOpacity={0.85}>
-                  <LinearGradient colors={[colors.primary[600], colors.primary[800]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.postBtnInner}>
-                    <Text style={styles.postBtnText}>Post</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.composerDivider} />
+
+            {/* Media + tag + post actions */}
+            <View style={styles.composerActions}>
+              <TouchableOpacity style={styles.composerActionBtn} onPress={() => pickMedia('image')}>
+                <Text style={styles.composerActionIcon}>{'\uD83D\uDDBC\uFE0F'}</Text>
+                <Text style={styles.composerActionText}>Photo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.composerActionBtn} onPress={() => pickMedia('video')}>
+                <Text style={styles.composerActionIcon}>{'\uD83C\uDFAC'}</Text>
+                <Text style={styles.composerActionText}>Video</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.composerActionBtn} onPress={() => setShowTagModal(true)}>
+                <Text style={styles.composerActionIcon}>{'\uD83D\uDC64'}</Text>
+                <Text style={styles.composerActionText}>Tag</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.composerPostBtn, !canPost && styles.composerPostBtnDisabled]}
+                onPress={handleCreatePost}
+                disabled={!canPost}
+                activeOpacity={0.8}
+              >
+                {isPosting
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={styles.composerPostBtnText}>Post</Text>
+                }
+              </TouchableOpacity>
             </View>
           </View>
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>✨</Text>
-            <Text style={styles.emptyTitle}>Nothing here yet</Text>
-            <Text style={styles.emptySubtext}>Be the first to share a blessing!</Text>
+            <Text style={styles.emptyStateIcon}>{'\u2728'}</Text>
+            <Text style={styles.emptyStateTitle}>No posts yet</Text>
+            <Text style={styles.emptyStateSub}>Be the first to share a blessing!</Text>
           </View>
         }
       />
 
-      {/* ─── Comments Modal ─── */}
-      <Modal visible={showCommentsModal} animationType="slide" onRequestClose={() => setShowCommentsModal(false)}>
-        <View style={styles.sheetContainer}>
-          {/* Handle */}
-          <View style={styles.sheetHandle} />
+      {/* ═══ POST OPTIONS BOTTOM SHEET ══════════════════════════════════════ */}
+      <Modal visible={showOptionsSheet} transparent animationType="slide" onRequestClose={closeOptions}>
+        <TouchableWithoutFeedback onPress={closeOptions}>
+          <View style={styles.sheetOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.sheetContainer}>
+                <View style={styles.sheetHandle} />
 
+                {optionsPost && (
+                  <View style={styles.sheetPostInfo}>
+                    <Text style={styles.sheetPostName}>{optionsPost.first_name} {optionsPost.last_name}</Text>
+                    <Text style={styles.sheetPostTime}>{formatTs(optionsPost.created_at)}</Text>
+                  </View>
+                )}
+
+                <View style={styles.sheetDivider} />
+
+                <TouchableOpacity style={styles.sheetItem} onPress={() => { closeOptions(); if (optionsPost) handleSharePost(optionsPost); }}>
+                  <Text style={styles.sheetItemIcon}>{'↗️'}</Text>
+                  <Text style={styles.sheetItemText}>Share post</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.sheetItem} onPress={() => { closeOptions(); if (optionsPost) openComments(optionsPost); }}>
+                  <Text style={styles.sheetItemIcon}>{'\uD83D\uDCAC'}</Text>
+                  <Text style={styles.sheetItemText}>View comments</Text>
+                </TouchableOpacity>
+
+                {optionsPost?.user_id === user?.id && (
+                  <TouchableOpacity style={[styles.sheetItem]} onPress={confirmDeletePost}>
+                    <Text style={styles.sheetItemIcon}>{'\uD83D\uDDD1\uFE0F'}</Text>
+                    <Text style={[styles.sheetItemText, styles.sheetItemDanger]}>Delete post</Text>
+                  </TouchableOpacity>
+                )}
+
+                <View style={styles.sheetDivider} />
+                <TouchableOpacity style={[styles.sheetItem, styles.sheetCancelItem]} onPress={closeOptions}>
+                  <Text style={styles.sheetCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* ═══ COMMENTS MODAL ═════════════════════════════════════════════════ */}
+      <Modal visible={showCommentsModal} animationType="slide" onRequestClose={() => setShowCommentsModal(false)}>
+        <KeyboardAvoidingView
+          style={styles.modalRoot}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
           {/* Header */}
-          <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Comments</Text>
-            <TouchableOpacity style={styles.sheetClose} onPress={() => setShowCommentsModal(false)}>
-              <Text style={styles.sheetCloseText}>✕</Text>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity style={styles.modalBackBtn} onPress={() => setShowCommentsModal(false)}>
+              <Text style={styles.modalBackText}>{'\u2190'}</Text>
             </TouchableOpacity>
+            <Text style={styles.modalTitle} numberOfLines={1}>
+              {selectedPost ? `${selectedPost.first_name}'s post` : 'Comments'}
+            </Text>
+            <View style={{ width: 44 }} />
           </View>
 
           <FlatList
             data={comments}
-            keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
+            keyExtractor={item => item.id.toString()}
+            contentContainerStyle={styles.commentListPad}
+            ListHeaderComponent={selectedPost ? (
+              /* Original post preview */
+              <View style={styles.commentPostPreview}>
+                <View style={styles.commentPostMeta}>
+                  {getPhotoUrl(selectedPost.profile_image)
+                    ? <Image source={{ uri: getPhotoUrl(selectedPost.profile_image)! }} style={styles.commentPostAvatar} />
+                    : (
+                      <LinearGradient colors={[colors.primary[500], colors.primary[700]]} style={styles.commentPostAvatar}>
+                        <Text style={styles.commentPostAvatarText}>{selectedPost.first_name.charAt(0)}</Text>
+                      </LinearGradient>
+                    )}
+                  <View>
+                    <Text style={styles.commentPostAuthor}>{selectedPost.first_name} {selectedPost.last_name}</Text>
+                    <Text style={styles.commentPostTime}>{formatTs(selectedPost.created_at)}</Text>
+                  </View>
+                </View>
+                {selectedPost.content ? <Text style={styles.commentPostContent}>{selectedPost.content}</Text> : null}
+                {selectedPost.media_url && selectedPost.media_type === 'image' && (
+                  <Image source={{ uri: getPhotoUrl(selectedPost.media_url) ?? selectedPost.media_url }} style={styles.commentPostMedia} resizeMode="cover" />
+                )}
+                <View style={styles.commentPostStatsRow}>
+                  {selectedPost.likes_count > 0 && (
+                    <Text style={styles.commentPostStat}>{'\uD83D\uDC4D'} {selectedPost.likes_count}</Text>
+                  )}
+                  <Text style={[styles.commentPostStat, { marginLeft: 'auto' as any }]}>
+                    {selectedPost.comments_count} {selectedPost.comments_count === 1 ? 'comment' : 'comments'}
+                  </Text>
+                </View>
+                <View style={styles.commentPostDivider} />
+                <Text style={styles.commentsSectionLabel}>Comments</Text>
+              </View>
+            ) : null}
             renderItem={({ item }) => {
-              const cPhotoUri = getPhotoUrl(item.profile_image);
+              const cUri = getPhotoUrl(item.profile_image);
               return (
-                <View style={styles.commentCard}>
-                  <View style={styles.commentAvatarWrap}>
-                    {cPhotoUri ? (
-                      <Image source={{ uri: cPhotoUri }} style={styles.commentAvatar} />
-                    ) : (
+                <View style={styles.commentRow}>
+                  {cUri
+                    ? <Image source={{ uri: cUri }} style={styles.commentAvatar} />
+                    : (
                       <LinearGradient colors={[colors.primary[500], colors.primary[700]]} style={styles.commentAvatar}>
                         <Text style={styles.commentAvatarText}>{item.first_name.charAt(0)}</Text>
                       </LinearGradient>
                     )}
-                  </View>
-                  <View style={styles.commentBubble}>
-                    <View style={styles.commentBubbleHeader}>
-                      <Text style={styles.commentAuthor}>{item.first_name} {item.last_name}</Text>
-                      <Text style={styles.commentTime}>{formatTimestamp(item.created_at)}</Text>
+                  <View style={styles.commentRight}>
+                    <View style={styles.commentBubble}>
+                      <Text style={styles.commentName}>{item.first_name} {item.last_name}</Text>
+                      <Text style={styles.commentBody}>{item.comment}</Text>
                     </View>
-                    <Text style={styles.commentBody}>{item.comment}</Text>
+                    <View style={styles.commentMeta}>
+                      <Text style={styles.commentTime}>{formatTs(item.created_at)}</Text>
+                      <TouchableOpacity><Text style={styles.commentMetaAction}>Like</Text></TouchableOpacity>
+                      <TouchableOpacity><Text style={styles.commentMetaAction}>Reply</Text></TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               );
             }}
             ListEmptyComponent={
-              <View style={styles.emptyComments}>
-                <Text style={styles.emptyCommentsIcon}>💭</Text>
-                <Text style={styles.emptyCommentsText}>No comments yet — start the conversation!</Text>
-              </View>
+              commentsLoading
+                ? <ActivityIndicator style={{ marginTop: 40 }} color="#1877F2" />
+                : (
+                  <View style={styles.emptyComments}>
+                    <Text style={styles.emptyCommentsText}>No comments yet — be the first! {'\uD83D\uDCAC'}</Text>
+                  </View>
+                )
             }
           />
 
-          <View style={styles.commentBar}>
+          {/* Comment input */}
+          <View style={styles.commentInputBar}>
+            {currentUserPhoto
+              ? <Image source={{ uri: currentUserPhoto }} style={styles.commentInputAvatar} />
+              : (
+                <LinearGradient colors={[colors.primary[500], colors.primary[700]]} style={styles.commentInputAvatar}>
+                  <Text style={styles.commentInputAvatarText}>{meInitial}</Text>
+                </LinearGradient>
+              )}
             <TextInput
-              style={styles.commentBarInput}
+              style={styles.commentInput}
               placeholder="Write a comment..."
-              placeholderTextColor={colors.gray[400]}
+              placeholderTextColor="#90949C"
               value={newComment}
               onChangeText={setNewComment}
               multiline
+              returnKeyType="send"
             />
-            <TouchableOpacity style={styles.sendBtn} onPress={handleAddComment} activeOpacity={0.85}>
-              <LinearGradient colors={[colors.primary[600], colors.primary[800]]} style={styles.sendBtnInner}>
-                <Text style={styles.sendBtnText}>↑</Text>
-              </LinearGradient>
+            <TouchableOpacity
+              style={[styles.commentSendBtn, (!newComment.trim() || isSendingComment) && styles.commentSendBtnOff]}
+              onPress={handleAddComment}
+              disabled={!newComment.trim() || isSendingComment}
+              activeOpacity={0.8}
+            >
+              {isSendingComment
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={styles.commentSendText}>{'\u2191'}</Text>
+              }
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
-      {/* ─── Tag Users Modal ─── */}
+      {/* ═══ TAG PEOPLE MODAL ═══════════════════════════════════════════════ */}
       <Modal visible={showTagModal} animationType="slide" onRequestClose={() => setShowTagModal(false)}>
-        <View style={styles.sheetContainer}>
-          <View style={styles.sheetHandle} />
-          <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Tag People</Text>
-            <TouchableOpacity style={styles.sheetClose} onPress={() => setShowTagModal(false)}>
-              <Text style={styles.sheetCloseText}>✕</Text>
+        <View style={styles.modalRoot}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity style={styles.modalBackBtn} onPress={() => setShowTagModal(false)}>
+              <Text style={styles.modalBackText}>{'\u2190'}</Text>
             </TouchableOpacity>
+            <Text style={styles.modalTitle}>Tag People</Text>
+            <View style={{ width: 44 }} />
           </View>
 
-          <View style={styles.searchBox}>
-            <Text style={styles.searchIcon}>🔍</Text>
+          <View style={styles.tagSearchBox}>
+            <Text style={styles.tagSearchIcon}>{'\uD83D\uDD0D'}</Text>
             <TextInput
-              style={styles.searchInput}
+              style={styles.tagSearchInput}
               placeholder="Search members..."
-              placeholderTextColor={colors.gray[400]}
-              value={userSearchQuery}
-              onChangeText={setUserSearchQuery}
+              placeholderTextColor="#90949C"
+              value={memberSearch}
+              onChangeText={setMemberSearch}
+              autoFocus
             />
+            {memberSearch.length > 0 && (
+              <TouchableOpacity onPress={() => setMemberSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={{ color: '#65676B', fontSize: 16, paddingHorizontal: 4 }}>{'\u2715'}</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <FlatList
-            data={allUsers.filter(u =>
-              u.id !== user?.id &&
-              (userSearchQuery === '' ||
-               `${u.first_name} ${u.last_name}`.toLowerCase().includes(userSearchQuery.toLowerCase()))
+            data={allMembers.filter(m =>
+              m.id !== user?.id &&
+              (memberSearch === '' || `${m.first_name} ${m.last_name}`.toLowerCase().includes(memberSearch.toLowerCase()))
             )}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item: tagUser }) => {
-              const isTagged = taggedUsers.some(u => u.id === tagUser.id);
-              const tPhotoUri = getPhotoUrl(tagUser.profile_image);
+            keyExtractor={item => item.id.toString()}
+            renderItem={({ item: m }) => {
+              const tagged = taggedUsers.some(u => u.id === m.id);
+              const mUri = getPhotoUrl(m.profile_image);
               return (
-                <TouchableOpacity style={[styles.memberRow, isTagged && styles.memberRowActive]} onPress={() => toggleTagUser(tagUser)} activeOpacity={0.75}>
-                  <View style={styles.memberAvatarWrap}>
-                    {tPhotoUri ? (
-                      <Image source={{ uri: tPhotoUri }} style={styles.memberAvatar} />
-                    ) : (
-                      <LinearGradient colors={[colors.primary[500], colors.primary[700]]} style={styles.memberAvatar}>
-                        <Text style={styles.memberAvatarText}>{tagUser.first_name.charAt(0)}</Text>
+                <TouchableOpacity
+                  style={[styles.tagMemberRow, tagged && styles.tagMemberRowActive]}
+                  onPress={() => toggleTag(m)}
+                  activeOpacity={0.75}
+                >
+                  {mUri
+                    ? <Image source={{ uri: mUri }} style={styles.tagMemberAvatar} />
+                    : (
+                      <LinearGradient colors={[colors.primary[500], colors.primary[700]]} style={styles.tagMemberAvatar}>
+                        <Text style={styles.tagMemberAvatarText}>{m.first_name.charAt(0)}</Text>
                       </LinearGradient>
                     )}
+                  <View style={styles.tagMemberInfo}>
+                    <Text style={styles.tagMemberName}>{m.first_name} {m.last_name}</Text>
+                    <Text style={styles.tagMemberEmail}>{m.email}</Text>
                   </View>
-                  <Text style={styles.memberName}>{tagUser.first_name} {tagUser.last_name}</Text>
-                  {isTagged && (
-                    <View style={styles.checkBadge}>
-                      <Text style={styles.checkBadgeText}>✓</Text>
-                    </View>
-                  )}
+                  {tagged
+                    ? <View style={styles.tagChecked}><Text style={styles.tagCheckedText}>{'\u2713'}</Text></View>
+                    : <View style={styles.tagUnchecked} />
+                  }
                 </TouchableOpacity>
               );
             }}
             ListEmptyComponent={
-              <View style={styles.emptyComments}>
-                <Text style={styles.emptyCommentsIcon}>👥</Text>
-                <Text style={styles.emptyCommentsText}>No members found</Text>
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateIcon}>{'\uD83D\uDC65'}</Text>
+                <Text style={styles.emptyStateTitle}>No members found</Text>
               </View>
             }
           />
 
-          <View style={styles.sheetFooter}>
-            <TouchableOpacity style={styles.doneBtn} onPress={() => setShowTagModal(false)} activeOpacity={0.85}>
-              <LinearGradient colors={[colors.primary[600], colors.primary[800]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.doneBtnInner}>
-                <Text style={styles.doneBtnText}>Done{taggedUsers.length > 0 ? `  (${taggedUsers.length})` : ''}</Text>
-              </LinearGradient>
+          <View style={styles.tagFooter}>
+            <TouchableOpacity style={styles.tagDoneBtn} onPress={() => setShowTagModal(false)}>
+              <Text style={styles.tagDoneBtnText}>
+                Done{taggedUsers.length > 0 ? `  (${taggedUsers.length} tagged)` : ''}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -720,533 +905,332 @@ export default function FeedScreen() {
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const createStyles = (colors: any) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F4F6FA',
-  },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 14,
-    fontSize: 15,
-    color: colors.gray[500],
-    fontWeight: '500',
-  },
+  /* Base */
+  container: { flex: 1, backgroundColor: colors.background },
+  centerContent: { justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 12, fontSize: 15, color: colors.textSecondary },
 
-  /* ── Filter bar ── */
-  filterBar: {
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8ECF2',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-  },
-  filterTabsContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  filterTab: {
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  filterTabActive: {
-    shadowColor: colors.primary[700],
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  filterTabInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#DDE3EF',
-    backgroundColor: colors.white,
-    gap: 5,
-  },
-  filterTabIcon: { fontSize: 13 },
-  filterTabLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.gray[600],
-  },
-  filterTabLabelActive: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-
-  /* ── Feed list ── */
-  feedList: {
-    paddingBottom: 24,
-  },
-
-  /* ── Composer ── */
-  composer: {
-    backgroundColor: colors.white,
-    marginHorizontal: 12,
-    marginTop: 12,
-    marginBottom: 4,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingTop: 14,
+  /* Top bar */
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 52 : 14,
     paddingBottom: 10,
-    shadowColor: '#1a1a2e',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
     elevation: 3,
-    borderWidth: 1,
-    borderColor: '#EEF1F8',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.07, shadowRadius: 4,
   },
-  composerTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 10,
+  topBarTitle: { fontSize: 24, fontWeight: '800', color: '#1877F2', letterSpacing: -0.5 },
+  topBarIcons: { flexDirection: 'row', gap: 6 },
+  topBarIcon: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center',
   },
+  topBarIconText: { fontSize: 18 },
+
+  /* Nav tabs */
+  navBar: { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  navBarContent: { paddingHorizontal: 6, paddingVertical: 2 },
+  navTab: {
+    paddingHorizontal: 14, paddingVertical: 10, marginHorizontal: 2,
+    borderBottomWidth: 3, borderBottomColor: 'transparent',
+  },
+  navTabActive: { borderBottomColor: '#1877F2' },
+  navTabText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  navTabTextActive: { color: '#1877F2' },
+
+  /* Feed */
+  feed: { flex: 1, backgroundColor: colors.background },
+  feedContent: { paddingBottom: 32 },
+
+  /* Composer */
+  composerCard: {
+    backgroundColor: colors.surface, marginBottom: 8,
+    paddingHorizontal: 14, paddingTop: 14, paddingBottom: 10,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
+  composerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
   composerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+    width: 42, height: 42, borderRadius: 21,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
-  composerAvatarText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
+  composerAvatarText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   composerInput: {
-    flex: 1,
-    minHeight: 52,
-    fontSize: 15,
-    color: colors.gray[800],
-    lineHeight: 22,
-    paddingTop: 4,
+    flex: 1, fontSize: 15, color: colors.text,
+    backgroundColor: colors.background, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderWidth: 1, borderColor: colors.border, minHeight: 42,
   },
-  previewWrap: {
-    marginBottom: 10,
-    borderRadius: 12,
-    overflow: 'hidden',
+  composerPreview: { borderRadius: 12, overflow: 'hidden', marginBottom: 10, position: 'relative' },
+  composerPreviewImg: { width: '100%', height: 200, backgroundColor: colors.border },
+  composerRemoveBtn: {
+    position: 'absolute', top: 8, right: 8,
+    backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 14,
+    width: 28, height: 28, alignItems: 'center', justifyContent: 'center',
   },
-  mediaPreview: {
-    width: '100%',
-    height: 180,
-    backgroundColor: colors.gray[100],
-    borderRadius: 12,
-  },
-  removeMedia: {
-    position: 'absolute',
-    top: 8, right: 8,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: 14,
-    width: 26, height: 26,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  removeMediaText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+  composerRemoveText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   tagChipRow: { marginBottom: 8 },
   tagChip: {
-    backgroundColor: colors.primary[50],
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    marginRight: 6,
-    borderWidth: 1,
-    borderColor: colors.primary[200],
+    backgroundColor: '#E7F3FF', borderRadius: 14,
+    paddingHorizontal: 12, paddingVertical: 5, marginRight: 6,
   },
-  tagChipText: { fontSize: 12, color: colors.primary[700], fontWeight: '600' },
-  composerToolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#EEF1F8',
-    paddingTop: 8,
-    marginTop: 4,
+  tagChipText: { color: '#1877F2', fontSize: 13, fontWeight: '600' },
+  composerTypeRow: { marginBottom: 4 },
+  composerTypeChip: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginRight: 8,
+    backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border,
   },
-  composerMediaBtns: { flexDirection: 'row', gap: 2 },
-  composerMediaBtn: {
-    padding: 8,
-    borderRadius: 10,
+  composerTypeChipActive: { backgroundColor: '#E7F3FF', borderColor: '#1877F2' },
+  composerTypeChipText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  composerTypeChipTextActive: { color: '#1877F2' },
+  composerDivider: { height: 1, backgroundColor: colors.border, marginVertical: 8 },
+  composerActions: { flexDirection: 'row', alignItems: 'center' },
+  composerActionBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 8, gap: 4,
   },
-  composerMediaIcon: { fontSize: 19 },
-  composerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flex: 1,
-    justifyContent: 'flex-end',
+  composerActionIcon: { fontSize: 18 },
+  composerActionText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  composerPostBtn: {
+    backgroundColor: '#1877F2', paddingHorizontal: 20, paddingVertical: 8,
+    borderRadius: 6, minWidth: 62, alignItems: 'center',
   },
-  typeChip: {
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-    borderRadius: 14,
-    backgroundColor: '#F3F4F6',
-    marginRight: 5,
-    borderWidth: 1,
-    borderColor: '#E2E5EE',
-  },
-  typeChipActive: {
-    backgroundColor: colors.primary[50],
-    borderColor: colors.primary[300],
-  },
-  typeChipText: { fontSize: 12, color: colors.gray[600], fontWeight: '500' },
-  typeChipTextActive: { color: colors.primary[700], fontWeight: '700' },
-  postBtn: {
-    borderRadius: 10,
-    overflow: 'hidden',
-    elevation: 2,
-    shadowColor: colors.primary[700],
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  postBtnInner: {
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-  },
-  postBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  composerPostBtnDisabled: { backgroundColor: colors.border },
+  composerPostBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
 
-  /* ── Post card ── */
+  /* Post card */
   postCard: {
-    backgroundColor: colors.white,
-    marginHorizontal: 12,
-    marginTop: 10,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#1a1a2e',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#EEF1F8',
+    backgroundColor: colors.surface, marginBottom: 8,
+    borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border,
+    overflow: 'visible',
   },
-  pinnedPost: {
-    borderColor: colors.primary[300],
-    borderWidth: 1.5,
+  pinnedBanner: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#FFF9E6', paddingHorizontal: 14, paddingVertical: 6,
+    borderBottomWidth: 1, borderBottomColor: '#FFE8A0',
   },
-  pinnedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary[50],
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.primary[100],
-  },
-  pinnedText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.primary[700],
-    letterSpacing: 0.2,
-  },
+  pinnedBannerText: { fontSize: 12, fontWeight: '600', color: '#8A6D00' },
   postHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    paddingBottom: 10,
+    flexDirection: 'row', alignItems: 'flex-start',
+    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 6,
   },
-  avatarWrap: {
-    marginRight: 11,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+  postHeaderLeft: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  postAvatar: {
+    width: 44, height: 44, borderRadius: 22,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
-  avatarImg: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: colors.primary[100],
-  },
-  avatarInitials: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  posterMeta: { flex: 1 },
-  posterName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.gray[900],
-    letterSpacing: 0.1,
-  },
-  metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3, gap: 8 },
-  postTime: { fontSize: 12, color: colors.gray[400], fontWeight: '400' },
-  typePill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  typePillText: { fontSize: 11, fontWeight: '600' },
-  deleteBtn: { padding: 6 },
-  deleteDot: { fontSize: 18, color: colors.gray[400], letterSpacing: 2 },
-  postContent: {
-    fontSize: 15,
-    color: colors.gray[800],
-    lineHeight: 24,
-    paddingHorizontal: 14,
-    paddingBottom: 12,
-    letterSpacing: 0.1,
-  },
-  mediaContainer: {
-    marginHorizontal: 14,
-    marginBottom: 12,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  postMedia: {
-    width: '100%',
-    height: 230,
-    backgroundColor: colors.gray[100],
-  },
-  actionDivider: {
-    height: 1,
-    backgroundColor: '#EEF1F8',
-    marginHorizontal: 14,
-  },
-  postActions: {
-    flexDirection: 'row',
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-  },
-  actionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    gap: 6,
-    borderRadius: 10,
-  },
-  actionIcon: {
-    fontSize: 19,
-    color: colors.gray[500],
-  },
-  likedIcon: { color: '#E53E3E' },
-  actionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.gray[500],
-  },
-  likedLabel: { color: '#E53E3E' },
-  actionSep: {
-    width: 1,
-    height: 28,
-    backgroundColor: '#EEF1F8',
-    alignSelf: 'center',
-  },
+  postAvatarText: { color: '#fff', fontWeight: '700', fontSize: 17 },
+  postAuthorBlock: { flex: 1 },
+  postAuthorName: { fontSize: 15, fontWeight: '700', color: colors.text },
+  typeBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginTop: 3 },
+  typeBadgeText: { fontSize: 11, fontWeight: '700' },
+  postMetaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
+  postTimestamp: { fontSize: 12, color: colors.textSecondary },
+  postMetaDot: { fontSize: 10, color: colors.textSecondary },
+  postScope: { fontSize: 12, color: colors.textSecondary },
+  moreBtn: { padding: 8, marginTop: -4, marginRight: -4 },
+  moreBtnText: { fontSize: 20, color: colors.textSecondary, letterSpacing: 1 },
+  postContent: { fontSize: 15, color: colors.text, lineHeight: 22, paddingHorizontal: 14, paddingBottom: 10 },
+  postMediaImg: { width: '100%', height: 300, backgroundColor: colors.border },
 
-  /* ── Empty state ── */
-  emptyState: {
-    paddingTop: 80,
-    alignItems: 'center',
+  /* Counts row */
+  countsRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 14, paddingVertical: 8,
   },
-  emptyIcon: { fontSize: 56, marginBottom: 14, opacity: 0.6 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.gray[700], marginBottom: 6 },
-  emptySubtext: { fontSize: 14, color: colors.gray[400] },
+  reactionSummary: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  reactionBubble: {
+    width: 22, height: 22, borderRadius: 11,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: colors.surface,
+  },
+  reactionBubbleText: { fontSize: 11 },
+  likeCountText: { fontSize: 14, color: colors.textSecondary },
+  commentCountText: { fontSize: 14, color: colors.textSecondary },
+  actionDivider: { height: 1, backgroundColor: colors.border, marginHorizontal: 14 },
 
-  /* ── Bottom sheet modals ── */
+  /* Reaction popup */
+  reactionOverlay: {
+    position: 'absolute', bottom: 50, left: 0, right: 0,
+    paddingLeft: 10, zIndex: 999,
+  },
+  reactionPopup: {
+    flexDirection: 'row', gap: 2,
+    backgroundColor: colors.surface,
+    borderRadius: 30, paddingHorizontal: 8, paddingVertical: 8,
+    alignSelf: 'flex-start',
+    elevation: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 12,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  reactionOption: { alignItems: 'center', paddingHorizontal: 4, paddingVertical: 2 },
+  reactionOptionIcon: { fontSize: 32 },
+  reactionOptionLabel: { fontSize: 9, fontWeight: '700', marginTop: 2 },
+
+  /* Action bar */
+  actionBar: { flexDirection: 'row', paddingVertical: 2, paddingHorizontal: 6 },
+  actionBarBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 10, gap: 5, borderRadius: 6,
+  },
+  actionBarSep: { width: 1, backgroundColor: colors.border, alignSelf: 'center', height: 22 },
+  actionBarIcon: { fontSize: 18, color: colors.textSecondary },
+  actionBarLabel: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+
+  /* Empty */
+  emptyState: { paddingTop: 60, alignItems: 'center', paddingHorizontal: 32 },
+  emptyStateIcon: { fontSize: 52, marginBottom: 12, opacity: 0.65 },
+  emptyStateTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 6 },
+  emptyStateSub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
+
+  /* Post options bottom sheet */
+  sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   sheetContainer: {
-    flex: 1,
-    backgroundColor: '#F4F6FA',
+    backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
   },
   sheetHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#CBD5E0',
-    alignSelf: 'center',
-    marginTop: 14,
-    marginBottom: 4,
+    width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border,
+    alignSelf: 'center', marginTop: 12, marginBottom: 8,
   },
-  sheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 16,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEF1F8',
-    marginBottom: 4,
+  sheetPostInfo: { paddingHorizontal: 20, paddingVertical: 10 },
+  sheetPostName: { fontSize: 16, fontWeight: '700', color: colors.text },
+  sheetPostTime: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  sheetDivider: { height: 1, backgroundColor: colors.border },
+  sheetItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingHorizontal: 20, paddingVertical: 16,
+    borderBottomWidth: 1, borderBottomColor: colors.background,
   },
-  sheetTitle: { fontSize: 20, fontWeight: '700', color: colors.gray[900] },
-  sheetClose: {
-    width: 32, height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
+  sheetItemIcon: { fontSize: 22, width: 30, textAlign: 'center' },
+  sheetItemText: { fontSize: 16, color: colors.text, fontWeight: '500' },
+  sheetItemDanger: { color: '#E41619' },
+  sheetCancelItem: {
+    justifyContent: 'center', borderBottomWidth: 0,
+    margin: 14, backgroundColor: colors.background, borderRadius: 12,
   },
-  sheetCloseText: { fontSize: 15, color: colors.gray[600], fontWeight: '600' },
-  sheetFooter: {
-    padding: 16,
-    backgroundColor: colors.white,
-    borderTopWidth: 1,
-    borderTopColor: '#EEF1F8',
-  },
+  sheetCancelText: { fontSize: 16, fontWeight: '700', color: colors.text, textAlign: 'center', width: '100%' },
 
-  /* ── Comment card ── */
-  commentCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 12,
+  /* Modal root */
+  modalRoot: { flex: 1, backgroundColor: colors.background },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingTop: Platform.OS === 'ios' ? 56 : 16,
+    paddingBottom: 14,
+    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  commentAvatarWrap: { marginRight: 10 },
+  modalBackBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  modalBackText: { fontSize: 28, color: '#1877F2', fontWeight: '600', lineHeight: 32 },
+  modalTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: colors.text, textAlign: 'center' },
+
+  /* Post preview in comments */
+  commentListPad: { paddingBottom: 24 },
+  commentPostPreview: {
+    backgroundColor: colors.surface, marginBottom: 8,
+    paddingHorizontal: 14, paddingTop: 14,
+  },
+  commentPostMeta: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  commentPostAvatar: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+  },
+  commentPostAvatarText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  commentPostAuthor: { fontSize: 14, fontWeight: '700', color: colors.text },
+  commentPostTime: { fontSize: 12, color: colors.textSecondary },
+  commentPostContent: { fontSize: 15, color: colors.text, lineHeight: 22, marginBottom: 10 },
+  commentPostMedia: { width: '100%', height: 200, borderRadius: 10, marginBottom: 10, backgroundColor: colors.border },
+  commentPostStatsRow: { flexDirection: 'row', alignItems: 'center', paddingBottom: 10 },
+  commentPostStat: { fontSize: 13, color: colors.textSecondary },
+  commentPostDivider: { height: 1, backgroundColor: colors.border, marginBottom: 10 },
+  commentsSectionLabel: { fontSize: 15, fontWeight: '700', color: colors.text, paddingBottom: 14 },
+
+  /* Comment rows */
+  commentRow: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    paddingHorizontal: 14, marginBottom: 12, gap: 8,
+  },
   commentAvatar: {
     width: 36, height: 36, borderRadius: 18,
-    alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: colors.primary[100],
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
-  commentAvatarText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  commentAvatarText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  commentRight: { flex: 1 },
   commentBubble: {
-    flex: 1,
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-    borderWidth: 1,
-    borderColor: '#EEF1F8',
+    backgroundColor: colors.background, borderRadius: 18,
+    paddingHorizontal: 12, paddingVertical: 8,
   },
-  commentBubbleHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 5,
-  },
-  commentAuthor: { fontSize: 14, fontWeight: '700', color: colors.gray[900] },
-  commentTime: { fontSize: 11, color: colors.gray[400] },
-  commentBody: { fontSize: 14, color: colors.gray[700], lineHeight: 20 },
+  commentName: { fontSize: 13, fontWeight: '700', color: colors.text, marginBottom: 2 },
+  commentBody: { fontSize: 14, color: colors.text, lineHeight: 20 },
+  commentMeta: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 4, marginTop: 4 },
+  commentTime: { fontSize: 11, color: colors.textSecondary },
+  commentMetaAction: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+  emptyComments: { paddingVertical: 60, alignItems: 'center' },
+  emptyCommentsText: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: 32 },
 
-  emptyComments: { paddingVertical: 48, alignItems: 'center' },
-  emptyCommentsIcon: { fontSize: 40, opacity: 0.4, marginBottom: 10 },
-  emptyCommentsText: { fontSize: 15, color: colors.gray[500], fontWeight: '500', textAlign: 'center', paddingHorizontal: 32 },
+  /* Comment input */
+  commentInputBar: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    paddingHorizontal: 12, paddingVertical: 10,
+    backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  commentInputAvatar: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+  },
+  commentInputAvatarText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  commentInput: {
+    flex: 1, backgroundColor: colors.background, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 9,
+    fontSize: 14, color: colors.text,
+    borderWidth: 1, borderColor: colors.border, maxHeight: 100,
+  },
+  commentSendBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: '#1877F2', alignItems: 'center', justifyContent: 'center',
+  },
+  commentSendBtnOff: { backgroundColor: colors.border },
+  commentSendText: { color: '#fff', fontSize: 22, fontWeight: '700', lineHeight: 28 },
 
-  /* ── Comment bar ── */
-  commentBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: 12,
-    backgroundColor: colors.white,
-    borderTopWidth: 1,
-    borderTopColor: '#EEF1F8',
-    gap: 10,
+  /* Tag modal */
+  tagSearchBox: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.background, marginHorizontal: 14, marginVertical: 10,
+    borderRadius: 20, paddingHorizontal: 12,
+    borderWidth: 1, borderColor: colors.border,
   },
-  commentBarInput: {
-    flex: 1,
-    minHeight: 42,
-    maxHeight: 100,
-    backgroundColor: '#F4F6FA',
-    borderRadius: 21,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: colors.gray[800],
-    borderWidth: 1,
-    borderColor: '#DDE3EF',
+  tagSearchIcon: { fontSize: 16, color: colors.textSecondary, marginRight: 6 },
+  tagSearchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: colors.text },
+  tagMemberRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 12, gap: 12,
+    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.background,
   },
-  sendBtn: {
-    width: 42, height: 42,
-    borderRadius: 21,
-    overflow: 'hidden',
-    elevation: 2,
-    shadowColor: colors.primary[700],
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+  tagMemberRowActive: { backgroundColor: '#E7F3FF' },
+  tagMemberAvatar: {
+    width: 46, height: 46, borderRadius: 23,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
-  sendBtnInner: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  sendBtnText: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginTop: -1 },
-
-  /* ── Tag modal ── */
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    marginHorizontal: 16,
-    marginVertical: 10,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#DDE3EF',
+  tagMemberAvatarText: { color: '#fff', fontWeight: '700', fontSize: 18 },
+  tagMemberInfo: { flex: 1 },
+  tagMemberName: { fontSize: 15, fontWeight: '600', color: colors.text },
+  tagMemberEmail: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
+  tagChecked: {
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: '#1877F2', alignItems: 'center', justifyContent: 'center',
   },
-  searchIcon: { fontSize: 15, marginRight: 6, color: colors.gray[400] },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 11,
-    fontSize: 14,
-    color: colors.gray[800],
+  tagCheckedText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  tagUnchecked: {
+    width: 26, height: 26, borderRadius: 13,
+    borderWidth: 2, borderColor: colors.border,
   },
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F4F6FA',
+  tagFooter: { padding: 14, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
+  tagDoneBtn: {
+    backgroundColor: '#1877F2', borderRadius: 8,
+    paddingVertical: 14, alignItems: 'center',
   },
-  memberRowActive: { backgroundColor: colors.primary[50] },
-  memberAvatarWrap: { marginRight: 12 },
-  memberAvatar: {
-    width: 40, height: 40, borderRadius: 20,
-    alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 1.5, borderColor: colors.primary[100],
-  },
-  memberAvatarText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  memberName: { flex: 1, fontSize: 15, fontWeight: '500', color: colors.gray[800] },
-  checkBadge: {
-    width: 24, height: 24, borderRadius: 12,
-    backgroundColor: colors.primary[600],
-    alignItems: 'center', justifyContent: 'center',
-  },
-  checkBadgeText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
-  doneBtn: { borderRadius: 12, overflow: 'hidden', elevation: 2 },
-  doneBtnInner: { paddingVertical: 14, alignItems: 'center' },
-  doneBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-
-  /* ── Kept for legacy refs ── */
-  filterTab_UNUSED: {
-    marginRight: 8,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  activeFilterTab: {
-    shadowColor: colors.primary[600],
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  filterTabText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.primary[600],
-  },
-  activeFilterTabText: {
-    color: colors.white,
-  },
+  tagDoneBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
 });

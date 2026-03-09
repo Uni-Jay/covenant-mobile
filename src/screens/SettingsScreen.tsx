@@ -265,7 +265,7 @@ export default function SettingsScreen({ navigation }: any) {
           onPress={() => {
             Alert.alert(
               'Privacy Policy',
-              'Word of Covenant Church is committed to protecting your privacy. We collect and use your personal information only to provide and improve our services. Your data is securely stored and never shared with third parties without your consent.\n\nFor full details, visit our website or contact us.',
+              'Household Of Covenant And Faith Apostolic Ministry is committed to protecting your privacy. We collect and use your personal information only to provide and improve our services. Your data is securely stored and never shared with third parties without your consent.\n\nFor full details, visit our website or contact us.',
               [{ text: 'OK' }]
             );
           }}
@@ -285,7 +285,7 @@ export default function SettingsScreen({ navigation }: any) {
           onPress={() => {
             Alert.alert(
               'Terms of Service',
-              'By using the Word of Covenant Church app, you agree to:\n\n• Use the app for lawful purposes only\n• Respect the privacy of other members\n• Not post offensive or inappropriate content\n• Comply with all church policies\n\nFor complete terms, please visit our website or contact church administration.',
+              'By using the Household Of Covenant And Faith Apostolic Ministry app, you agree to:\n\n• Use the app for lawful purposes only\n• Respect the privacy of other members\n• Not post offensive or inappropriate content\n• Comply with all church policies\n\nFor complete terms, please visit our website or contact church administration.',
               [{ text: 'OK' }]
             );
           }}
@@ -315,7 +315,7 @@ export default function SettingsScreen({ navigation }: any) {
           <Text style={[styles.menuArrow, { color: themeColors.textSecondary }]}>›</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.settingItem, { borderBottomColor: themeColors.border }]} onPress={() => Alert.alert('Version', 'Word of Covenant Church v1.0.0')}>
+        <TouchableOpacity style={[styles.settingItem, { borderBottomColor: themeColors.border }]} onPress={() => Alert.alert('Version', 'Household Of Covenant And Faith Apostolic Ministry v1.0.0')}>
           <View style={styles.settingLeft}>
             <Text style={styles.settingIcon}>ℹ️</Text>
             <View>

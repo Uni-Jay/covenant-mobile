@@ -70,7 +70,7 @@ const FirstTimerRegisterScreen = ({ route, navigation }: any) => {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>First-Timer Registration</Text>
-        <Text style={styles.headerSubtitle}>Welcome to Word of Covenant Church!</Text>
+        <Text style={styles.headerSubtitle}>Welcome to Household Of Covenant And Faith Apostolic Ministry!</Text>
       </View>
 
       <View style={styles.form}>

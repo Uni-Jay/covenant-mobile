@@ -1,5 +1,5 @@
 {
-  "name": "wcc",
+  "name": "hocfam",
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
@@ -27,10 +27,11 @@
     "expo-audio": "~1.1.1",
     "expo-av": "~16.0.8",
     "expo-camera": "~17.0.10",
+    "expo-clipboard": "~8.0.8",
     "expo-crypto": "^15.0.8",
     "expo-dev-client": "~6.0.20",
     "expo-document-picker": "~14.0.8",
-    "expo-file-system": "~19.0.21",
+    "expo-file-system": "^19.0.21",
     "expo-font": "^14.0.11",
     "expo-image-picker": "^17.0.10",
     "expo-linear-gradient": "~15.0.8",

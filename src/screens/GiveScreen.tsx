@@ -51,7 +51,7 @@ export default function GiveScreen() {
 
   const bankDetails = {
     bankName: 'First Bank Nigeria',
-    accountName: 'Word of Covenant Church',
+    accountName: 'Household Of Covenant And Faith Apostolic Ministry',
     accountNumber: '1234567890',
   };
 

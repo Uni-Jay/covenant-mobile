@@ -87,7 +87,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
         <View style={styles.verseCard}>
-          <Text style={styles.verse}>"Light of the World" - John 8:12</Text>
+          <Text style={styles.verse}>"Household of the living God" - 1 Timothy 3:15</Text>
         </View>
       </LinearGradient>
 

@@ -1,4 +1,4 @@
-# QR Code Scanning Guide - Word of Covenant Church Mobile App
+# QR Code Scanning Guide - Household Of Covenant And Faith Apostolic Ministry Mobile App
 
 ## Overview
 The app supports QR code scanning for two main features:
@@ -70,7 +70,7 @@ The app supports QR code scanning for two main features:
 ### Camera Not Working
 **Problem**: Camera shows black screen or doesn't open
 **Solution**:
-1. Go to phone Settings → Apps → Word of Covenant Church
+1. Go to phone Settings → Apps → Household Of Covenant And Faith Apostolic Ministry
 2. Tap **Permissions** → Camera
 3. Select **Allow** or **While using the app**
 4. Restart the app
@@ -87,7 +87,7 @@ The app supports QR code scanning for two main features:
 ### Permission Denied
 **Problem**: App says "Camera permission denied"
 **Solution**:
-1. Go to Settings → Apps → Word of Covenant Church → Permissions
+1. Go to Settings → Apps → Household Of Covenant And Faith Apostolic Ministry → Permissions
 2. Enable Camera permission
 3. Return to app and try again
 

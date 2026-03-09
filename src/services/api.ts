@@ -136,18 +136,30 @@ export const chatService = {
     const response = await api.delete(`/chat/groups/${groupId}/members/${userId}`);
     return response.data;
   },
-  updateGroupSettings: async (groupId: number, updates: { name?: string; description?: string; photo?: File }) => {
+  updateGroupSettings: async (groupId: number, updates: { name?: string; description?: string; photo?: any }) => {
+    const token = await AsyncStorage.getItem('token');
     const formData = new FormData();
     if (updates.name) formData.append('name', updates.name);
     if (updates.description) formData.append('description', updates.description);
-    if (updates.photo) formData.append('photo', updates.photo as any);
-    
-    const response = await api.put(`/chat/groups/${groupId}/settings`, formData, {
+    if (updates.photo) formData.append('photo', updates.photo);
+
+    // Use native fetch instead of Axios — the Axios instance sets a default
+    // Content-Type: application/json which overwrites the multipart boundary.
+    // fetch() with a FormData body automatically sets the correct boundary.
+    const response = await fetch(`${API_BASE_URL}/chat/groups/${groupId}/settings`, {
+      method: 'PUT',
       headers: {
-        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${token}`,
+        // Do NOT set Content-Type — fetch must auto-generate it with the boundary
       },
+      body: formData as any,
     });
-    return response.data;
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+      throw new Error(err.error || `Server error ${response.status}`);
+    }
+    return response.json();
   },
   leaveGroup: async (groupId: number) => {
     const response = await api.post(`/chat/groups/${groupId}/leave`);

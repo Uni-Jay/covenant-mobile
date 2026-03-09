@@ -1,4 +1,4 @@
-# Mobile App Complete Setup - Word of Covenant Church
+# Mobile App Complete Setup - Household Of Covenant And Faith Apostolic Ministry
 
 ## ✅ COMPLETED CHANGES
 
@@ -123,7 +123,7 @@ The app automatically requests camera permissions when:
 - iOS: Popup appears → Tap "OK"
 
 **If Permission Denied:**
-- Go to Phone Settings → Apps → Word of Covenant Church
+- Go to Phone Settings → Apps → Household Of Covenant And Faith Apostolic Ministry
 - Tap Permissions → Camera
 - Select "Allow" or "While using the app"
 

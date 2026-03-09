@@ -3,7 +3,7 @@
 ## 🎯 TO SCAN ATTENDANCE QR CODE:
 
 ### Step 1: Open App
-Tap the Word of Covenant Church app icon
+Tap the Household Of Covenant And Faith Apostolic Ministry app icon
 
 ### Step 2: Find Attendance Button
 **TWO WAYS:**
