@@ -1,9 +1,10 @@
 import io, { Socket } from 'socket.io-client';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getSocketUrl } from '../config/network.config';
 
-// Use localhost for all platforms with ADB reverse port forwarding
-const SOCKET_URL = 'http://localhost:5000';
+// Use IP from network.config.ts for WiFi connection
+const SOCKET_URL = getSocketUrl();
 
 export interface IncomingCall {
   callerId: number;

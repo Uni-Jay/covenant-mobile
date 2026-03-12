@@ -1,19 +1,16 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { getApiUrl } from '../config/network.config';
 
-// Update this to your backend URL
-// IMPORTANT: When using physical device with USB, run: adb -s <device-id> reverse tcp:5000 tcp:5000
+// Update network.config.ts with your computer's IP address (run: ipconfig)
 const getApiBaseUrl = () => {
   if (__DEV__) {
-    if (Platform.OS === 'android') {
-      // Using localhost - works with adb reverse for physical devices via USB
-      return 'http://localhost:5000/api';
-    }
-    return 'http://localhost:5000/api'; // iOS simulator
+    // Use the IP from network.config.ts for WiFi connection
+    return getApiUrl();
   }
   // Production URL (update when deploying)
-  return 'http://localhost:5000/api';
+  return 'https://your-server-url.onrender.com/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();

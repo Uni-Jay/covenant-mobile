@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,15 +9,23 @@ import {
   Alert,
   Platform,
   Linking,
+  ScrollView,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Paths } from 'expo-file-system';
 import { downloadAsync } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import * as MediaLibrary from 'expo-media-library';
+import { Asset } from 'expo-asset';
+import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { colors, primaryColor, dangerColor } from '../theme/colors';
 import api from '../services/api';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 
 interface Document {
@@ -43,6 +51,18 @@ const ChurchDocumentsScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<'documents' | 'letterheads'>('documents');
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [selectedLetterhead, setSelectedLetterhead] = useState('church');
+  const [isDownloadingLetterhead, setIsDownloadingLetterhead] = useState(false);
+
+  const letterheadTypes = [
+    { key: 'church', label: 'Church', iconName: 'business', iconType: 'ionicons' as const },
+    { key: 'youth', label: 'Youth', iconName: 'people', iconType: 'ionicons' as const },
+    { key: 'choir', label: 'Choir', iconName: 'musical-notes', iconType: 'ionicons' as const },
+    { key: 'goodwomen', label: 'Goodwomen', iconName: 'woman', iconType: 'ionicons' as const },
+    { key: 'covenantmen', label: 'Covenantmen', iconName: 'man', iconType: 'ionicons' as const },
+    { key: 'drama', label: 'Drama', iconName: 'drama-masks', iconType: 'material-community' as const },
+    { key: 'children', label: 'Children', iconName: 'balloon', iconType: 'ionicons' as const },
+  ];
 
   // Check if user is admin or media department
   const isAdminOrMedia = React.useMemo(() => {
@@ -134,21 +154,63 @@ const ChurchDocumentsScreen = () => {
     }
   };
 
-  const getDocumentIcon = (type: string) => {
+  const getDocumentIcon = (type: string): { name: string; type: 'ionicons' | 'material-community' } => {
     switch (type) {
       case 'letterhead':
-        return 'ðŸ“„';
+        return { name: 'document-text', type: 'ionicons' };
       case 'form':
-        return 'ðŸ“‹';
+        return { name: 'clipboard-list', type: 'material-community' };
       case 'certificate':
-        return 'ðŸ†';
+        return { name: 'certificate', type: 'material-community' };
       case 'policy':
-        return 'ðŸ›¡ï¸';
+        return { name: 'shield-checkmark', type: 'ionicons' };
       default:
-        return 'ðŸ“';
+        return { name: 'document', type: 'ionicons' };
     }
   };
+  const downloadLetterhead = async () => {
+    try {
+      setIsDownloadingLetterhead(true);
 
+      // Request permissions
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant storage permission to download letterhead.');
+        return;
+      }
+
+      // Only Church letterhead is available for now
+      if (selectedLetterhead !== 'church') {
+        Alert.alert('Coming Soon', `${selectedLetterhead.charAt(0).toUpperCase() + selectedLetterhead.slice(1)} letterhead will be available soon.`);
+        return;
+      }
+
+      // Get the local asset and ensure it's downloaded
+      const assetModule = require('../../assets/images/Church_letterhead.jpeg');
+      const asset = Asset.fromModule(assetModule);
+      
+      // Download the asset if not already cached
+      if (!asset.downloaded) {
+        await asset.downloadAsync();
+      }
+
+      // Share the file
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(asset.localUri || asset.uri, {
+          mimeType: 'image/jpeg',
+          dialogTitle: `${selectedLetterhead.charAt(0).toUpperCase() + selectedLetterhead.slice(1)} Letterhead`,
+        });
+        Alert.alert('Success', 'Letterhead ready to download or share!');
+      } else {
+        Alert.alert('Error', 'Sharing is not available on this device.');
+      }
+    } catch (error) {
+      console.error('Download letterhead error:', error);
+      Alert.alert('Error', 'Failed to download letterhead. Please try again.');
+    } finally {
+      setIsDownloadingLetterhead(false);
+    }
+  };
   const renderDocument = ({ item }: { item: Document }) => (
     <TouchableOpacity
       style={styles.documentCard}
@@ -156,7 +218,14 @@ const ChurchDocumentsScreen = () => {
       disabled={downloadingId === item.id}
     >
       <View style={styles.documentIcon}>
-        <Text style={styles.iconText}>{getDocumentIcon(item.documentType)}</Text>
+        {(() => {
+          const icon = getDocumentIcon(item.documentType);
+          return icon.type === 'ionicons' ? (
+            <Ionicons name={icon.name as any} size={32} color={primaryColor} />
+          ) : (
+            <MaterialCommunityIcons name={icon.name as any} size={32} color={primaryColor} />
+          );
+        })()}
       </View>
 
       <View style={styles.documentInfo}>
@@ -170,13 +239,13 @@ const ChurchDocumentsScreen = () => {
           <Text style={styles.metaText}>
             By {item.creatorFirstName} {item.creatorLastName}
           </Text>
-          <Text style={styles.metaText}>â€¢</Text>
+          <Text style={styles.metaText}>  •  </Text>
           <Text style={styles.metaText}>
             {new Date(item.createdAt).toLocaleDateString()}
           </Text>
           {item.downloadCount > 0 && (
             <>
-              <Text style={styles.metaText}>â€¢</Text>
+              <Text style={styles.metaText}>  •  </Text>
               <Text style={styles.metaText}>
                 {item.downloadCount} downloads
               </Text>
@@ -188,14 +257,14 @@ const ChurchDocumentsScreen = () => {
       {downloadingId === item.id ? (
         <ActivityIndicator size="small" color={primaryColor} />
       ) : (
-        <Text style={styles.downloadIcon}>â¬‡ï¸</Text>
+        <Ionicons name="download" size={24} color={primaryColor} />
       )}
     </TouchableOpacity>
   );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyIcon}>ðŸ“„</Text>
+      <Ionicons name="document-text-outline" size={64} color="#ccc" />
       <Text style={styles.emptyText}>
         {selectedTab === 'letterheads' 
           ? 'No letterheads available' 
@@ -209,7 +278,7 @@ const ChurchDocumentsScreen = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.accessDenied}>
-          <Text style={styles.accessDeniedIcon}>ðŸ”’</Text>
+          <Text style={styles.accessDeniedIcon}>🔒</Text>
           <Text style={styles.accessDeniedTitle}>Access Restricted</Text>
           <Text style={styles.accessDeniedText}>
             This section is only available to administrators and media department members.
@@ -245,7 +314,11 @@ const ChurchDocumentsScreen = () => {
             style={[styles.tab, selectedTab === 'documents' && styles.activeTab]}
             onPress={() => setSelectedTab('documents')}
           >
-            <Text style={styles.tabIcon}>ðŸ“„</Text>
+            <Ionicons 
+              name="document-text" 
+              size={20} 
+              color={selectedTab === 'documents' ? '#fff' : themeColors.primary[600]} 
+            />
             <Text style={[
               styles.tabText,
               selectedTab === 'documents' && styles.activeTabText
@@ -258,7 +331,11 @@ const ChurchDocumentsScreen = () => {
             style={[styles.tab, selectedTab === 'letterheads' && styles.activeTab]}
             onPress={() => setSelectedTab('letterheads')}
           >
-            <Text style={styles.tabIcon}>ðŸ†</Text>
+            <Ionicons 
+              name="newspaper" 
+              size={20} 
+              color={selectedTab === 'letterheads' ? '#fff' : themeColors.primary[600]} 
+            />
             <Text style={[
               styles.tabText,
               selectedTab === 'letterheads' && styles.activeTabText
@@ -271,7 +348,7 @@ const ChurchDocumentsScreen = () => {
 
       {selectedTab === 'letterheads' && !isExecutive && (
         <View style={styles.restrictedAccess}>
-          <Text style={styles.restrictedIcon}>ðŸ”’</Text>
+          <Ionicons name="lock-closed" size={48} color={themeColors.error} />
           <Text style={styles.restrictedText}>Executives Only</Text>
           <Text style={styles.restrictedSubtext}>
             Letterheads are restricted to church executives
@@ -280,7 +357,7 @@ const ChurchDocumentsScreen = () => {
       )}
 
       <FlatList
-        data={selectedTab === 'documents' ? documents : letterheads}
+        data={selectedTab === 'documents' ? documents : []}
         renderItem={renderDocument}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}
@@ -288,12 +365,129 @@ const ChurchDocumentsScreen = () => {
         refreshing={isLoading}
         onRefresh={() => {
           setIsLoading(true);
-          if (selectedTab === 'documents') {
-            loadDocuments();
-          } else {
-            loadLetterheads();
-          }
+          loadDocuments();
         }}
+        ListHeaderComponent={
+          selectedTab === 'letterheads' && isExecutive ? (
+            <>
+              {/* Letterhead segments */}
+              <View style={styles.letterheadSegments}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.segmentsScrollContent}
+                >
+                  {letterheadTypes.map((type) => (
+                    <TouchableOpacity
+                      key={type.key}
+                      style={[
+                        styles.segmentButton,
+                        selectedLetterhead === type.key && styles.segmentButtonActive
+                      ]}
+                      onPress={() => setSelectedLetterhead(type.key)}
+                    >
+                      {type.iconType === 'ionicons' ? (
+                        <Ionicons 
+                          name={type.iconName as any} 
+                          size={18} 
+                          color={selectedLetterhead === type.key ? '#fff' : themeColors.primary[600]} 
+                        />
+                      ) : (
+                        <MaterialCommunityIcons 
+                          name={type.iconName as any} 
+                          size={18} 
+                          color={selectedLetterhead === type.key ? '#fff' : themeColors.primary[600]} 
+                        />
+                      )}
+                      <Text style={[
+                        styles.segmentText,
+                        selectedLetterhead === type.key && styles.segmentTextActive
+                      ]}>
+                        {type.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* Letterhead content */}
+              {selectedLetterhead === 'church' ? (
+                <View style={styles.letterheadPreview}>
+                  <Text style={styles.letterheadTitle}>Church Official Letterhead</Text>
+                  <Text style={styles.letterheadSubtitle}>
+                    Use this letterhead for official church correspondence
+                  </Text>
+                  
+                  <View style={styles.imageContainer}>
+                    <Image
+                      source={require('../../assets/images/Church_letterhead.jpeg')}
+                      style={styles.letterheadImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.downloadButton, isDownloadingLetterhead && styles.downloadButtonDisabled]}
+                    onPress={downloadLetterhead}
+                    disabled={isDownloadingLetterhead}
+                  >
+                    {isDownloadingLetterhead ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="download" size={20} color="#fff" />
+                        <Text style={styles.downloadButtonText}>Download Letterhead</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  <View style={styles.usageNotes}>
+                    <View style={styles.usageNotesHeader}>
+                      <Ionicons name="information-circle" size={20} color={themeColors.primary[600]} />
+                      <Text style={styles.usageNotesTitle}>Usage Notes:</Text>
+                    </View>
+                    <Text style={styles.usageNotesText}>
+                      •  This letterhead is for official church communications only{'\n'}
+                      •  Include proper authorization and signatures{'\n'}
+                      •  Maintain professional tone and formatting{'\n'}
+                      •  Keep a copy for church records
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.comingSoonContainer}>
+                  {(() => {
+                    const currentType = letterheadTypes.find(t => t.key === selectedLetterhead);
+                    if (!currentType) return null;
+                    
+                    const IconComponent = currentType.iconType === 'ionicons' 
+                      ? Ionicons 
+                      : currentType.iconType === 'material-community' 
+                      ? MaterialCommunityIcons 
+                      : MaterialIcons;
+                    
+                    return (
+                      <IconComponent 
+                        name={currentType.iconName as any} 
+                        size={64} 
+                        color={themeColors.primary[400]} 
+                      />
+                    );
+                  })()}
+                  <Text style={styles.comingSoonTitle}>
+                    {letterheadTypes.find(t => t.key === selectedLetterhead)?.label} Letterhead
+                  </Text>
+                  <Text style={styles.comingSoonText}>
+                    Coming Soon
+                  </Text>
+                  <Text style={styles.comingSoonSubtext}>
+                    This letterhead template will be available shortly
+                  </Text>
+                </View>
+              )}
+            </>
+          ) : null
+        }
       />
     </SafeAreaView>
   );
@@ -470,6 +664,151 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginTop: 8,
+  },
+  letterheadSegments: {
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  segmentsScrollContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  segmentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  segmentButtonActive: {
+    backgroundColor: colors.primary[50],
+    borderColor: colors.primary[600],
+  },
+  segmentIcon: {
+    fontSize: 18,
+  },
+  segmentText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  segmentTextActive: {
+    color: colors.primary[600],
+  },
+  letterheadContent: {
+    flex: 1,
+  },
+  letterheadContentInner: {
+    padding: 20,
+  },
+  letterheadPreview: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  letterheadTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  letterheadSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+  },
+  imageContainer: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 20,
+    backgroundColor: '#f9f9f9',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  letterheadImage: {
+    width: '100%',
+    height: SCREEN_WIDTH * 1.4,
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary[600],
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+  downloadButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  downloadButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  usageNotes: {
+    backgroundColor: '#f0f7ff',
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary[600],
+    padding: 16,
+    borderRadius: 8,
+  },
+  usageNotesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6,
+  },
+  usageNotesTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  usageNotesText: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 20,
+  },
+  comingSoonContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+    paddingHorizontal: 40,
+  },
+  comingSoonIcon: {
+    fontSize: 72,
+    marginBottom: 16,
+    opacity: 0.5,
+  },
+  comingSoonTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  comingSoonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.primary[600],
+    marginBottom: 8,
+  },
+  comingSoonSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });
 

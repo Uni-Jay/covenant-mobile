@@ -5,12 +5,14 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 
 // Auth Screens
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 
 // Main Screens  
 import HomeScreen from '../screens/HomeScreen';
@@ -19,6 +21,7 @@ import EventsScreen from '../screens/EventsScreen';
 import EventDetailScreen from '../screens/EventDetailScreen';
 import EventManagementScreen from '../screens/EventManagementScreen';
 import SermonsScreen from '../screens/SermonsScreen';
+import SermonDetailScreen from '../screens/SermonDetailScreen';
 import SermonManagementScreen from '../screens/SermonManagementScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ChatListScreen from '../screens/ChatListScreen';
@@ -136,6 +139,11 @@ function AuthStack() {
         component={RegisterScreen}
         options={{ title: 'Create Account' }}
       />
+      <Stack.Screen
+        name="ForgotPassword"
+        component={ForgotPasswordScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }
@@ -164,7 +172,9 @@ function MainTabs() {
         name="Home"
         options={{
           tabBarLabel: 'Home',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>🏠</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size || 24} color={color} />
+          ),
         }}
       >
         {() => (
@@ -177,7 +187,9 @@ function MainTabs() {
         name="Feed"
         options={{
           tabBarLabel: 'Feed',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>📰</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="newspaper" size={size || 24} color={color} />
+          ),
           title: 'Church Feed',
         }}
       >
@@ -191,7 +203,9 @@ function MainTabs() {
         name="Chat"
         options={{
           tabBarLabel: 'Chat',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>💬</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubbles" size={size || 24} color={color} />
+          ),
           title: 'Messages',
         }}
       >
@@ -205,7 +219,9 @@ function MainTabs() {
         name="Sermons"
         options={{
           tabBarLabel: 'Sermons',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>🎙️</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="mic" size={size || 24} color={color} />
+          ),
         }}
       >
         {() => (
@@ -218,7 +234,9 @@ function MainTabs() {
         name="Profile"
         options={{
           tabBarLabel: 'Profile',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>👤</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size || 24} color={color} />
+          ),
         }}
       >
         {() => (
@@ -256,6 +274,7 @@ function MainStack() {
       <Stack.Screen name="Events" component={EventsScreen} options={{ title: 'Events' }} />
       <Stack.Screen name="EventDetail" component={EventDetailScreen} options={{ title: 'Event Details' }} />
       <Stack.Screen name="EventManagement" component={EventManagementScreen} options={{ title: 'Manage Events' }} />
+      <Stack.Screen name="SermonDetail" component={SermonDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="SermonManagement" component={SermonManagementScreen} options={{ title: 'Manage Sermons' }} />
       <Stack.Screen name="Prayer" component={PrayerScreen} options={{ title: 'Prayer Request' }} />
       <Stack.Screen name="Give" component={GiveScreen} options={{ title: 'Give' }} />

@@ -1,8 +1,9 @@
 import { RTCPeerConnection, RTCIceCandidate, RTCSessionDescription, mediaDevices, MediaStream } from 'react-native-webrtc';
 import io, { Socket } from 'socket.io-client';
 import { Platform } from 'react-native';
+import { getSocketUrl } from '../config/network.config';
 
-const SOCKET_URL = Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
+const SOCKET_URL = getSocketUrl();
 
 const configuration = {
   iceServers: [

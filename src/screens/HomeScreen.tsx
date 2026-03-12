@@ -12,10 +12,12 @@ import {
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { eventsService, sermonsService } from '../services';
 import { Event, Sermon } from '../types';
+import { getServerUrl } from '../config/network.config';
 
 const { width } = Dimensions.get('window');
 
@@ -77,13 +79,13 @@ export default function HomeScreen() {
         <View style={styles.headerTop}>
           <View style={styles.headerLeft}>
             <Text style={styles.greeting}>{getGreeting()},</Text>
-            <Text style={styles.userName}>{user?.fullName || 'Brother/Sister'} ✨</Text>
+            <Text style={styles.userName}>{user?.fullName || 'Brother/Sister'}</Text>
           </View>
           <TouchableOpacity
             style={styles.notificationButton}
             onPress={() => navigation.navigate('NotificationInbox')}
           >
-            <Text style={styles.notificationIcon}>🔔</Text>
+            <Ionicons name="notifications-outline" size={28} color="#fff" />
           </TouchableOpacity>
         </View>
         <View style={styles.verseCard}>
@@ -98,7 +100,10 @@ export default function HomeScreen() {
           style={styles.cardGradient}
         >
           <View style={styles.cardHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>⏰ Service Times</Text>
+            <View style={styles.sectionTitleContainer}>
+              <Ionicons name="time-outline" size={20} color={colors.primary[600]} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Service Times</Text>
+            </View>
           </View>
           <View style={[styles.serviceItem, { borderBottomColor: colors.border }]}>
             <View style={styles.serviceDayContainer}>
@@ -138,7 +143,7 @@ export default function HomeScreen() {
             colors={[colors.primary[50], colors.primary[100]]}
             style={styles.actionGradient}
           >
-            <Text style={styles.actionIcon}>📹</Text>
+            <Ionicons name="videocam" size={28} color={colors.primary[600]} />
             <Text style={styles.actionText}>Live Stream</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -152,7 +157,7 @@ export default function HomeScreen() {
             colors={[colors.secondary[50], colors.secondary[100]]}
             style={styles.actionGradient}
           >
-            <Text style={styles.actionIcon}>✅</Text>
+            <Ionicons name="checkmark-done" size={28} color={colors.secondary[600]} />
             <Text style={styles.actionText}>Attendance</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -166,7 +171,7 @@ export default function HomeScreen() {
             colors={[colors.primary[50], colors.primary[100]]}
             style={styles.actionGradient}
           >
-            <Text style={styles.actionIcon}>📅</Text>
+            <Ionicons name="calendar" size={28} color={colors.primary[600]} />
             <Text style={styles.actionText}>Events</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -180,7 +185,7 @@ export default function HomeScreen() {
             colors={[colors.secondary[50], colors.secondary[100]]}
             style={styles.actionGradient}
           >
-            <Text style={styles.actionIcon}>💝</Text>
+            <Ionicons name="heart" size={28} color={colors.secondary[600]} />
             <Text style={styles.actionText}>Give</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -195,7 +200,7 @@ export default function HomeScreen() {
               colors={[colors.primary[50], colors.primary[100]]}
               style={styles.actionGradient}
             >
-              <Text style={styles.actionIcon}>📄</Text>
+              <Ionicons name="document-text" size={28} color={colors.primary[600]} />
               <Text style={styles.actionText}>Documents</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -210,7 +215,7 @@ export default function HomeScreen() {
             colors={[colors.primary[50], colors.primary[100]]}
             style={styles.actionGradient}
           >
-            <Text style={styles.actionIcon}>🙏</Text>
+            <MaterialCommunityIcons name="hands-pray" size={28} color={colors.primary[600]} />
             <Text style={styles.actionText}>Prayer</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -219,7 +224,10 @@ export default function HomeScreen() {
       {/* Upcoming Events */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>📅 Upcoming Events</Text>
+          <View style={styles.sectionTitleContainer}>
+            <Ionicons name="calendar-outline" size={20} color={colors.primary[600]} />
+            <Text style={styles.sectionTitle}>Upcoming Events</Text>
+          </View>
           <TouchableOpacity onPress={() => navigation.navigate('Events')}>
             <Text style={styles.seeAll}>See All →</Text>
           </TouchableOpacity>
@@ -233,7 +241,7 @@ export default function HomeScreen() {
           >
             <View style={styles.eventImageContainer}>
               <Image
-                source={{ uri: `http://localhost:5000${event.imageUrl}` }}
+                source={{ uri: `${getServerUrl()}${event.imageUrl}` }}
                 style={styles.eventImage}
               />
               <LinearGradient
@@ -244,12 +252,21 @@ export default function HomeScreen() {
             <View style={styles.eventInfo}>
               <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
               <View style={styles.eventMetaRow}>
-                <Text style={styles.eventDate}>
-                  📅 {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </Text>
-                <Text style={styles.eventTime}>🕐 {event.time}</Text>
+                <View style={styles.eventMetaItem}>
+                  <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
+                  <Text style={styles.eventDate}>
+                    {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </Text>
+                </View>
+                <View style={styles.eventMetaItem}>
+                  <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                  <Text style={styles.eventTime}>{event.time}</Text>
+                </View>
               </View>
-              <Text style={styles.eventLocation} numberOfLines={1}>📍 {event.location}</Text>
+              <View style={styles.eventMetaItem}>
+                <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+                <Text style={styles.eventLocation} numberOfLines={1}>{event.location}</Text>
+              </View>
             </View>
           </TouchableOpacity>
         ))}
@@ -258,7 +275,10 @@ export default function HomeScreen() {
       {/* Recent Sermons */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>📖 Recent Sermons</Text>
+          <View style={styles.sectionTitleContainer}>
+            <Ionicons name="book-outline" size={20} color={colors.primary[600]} />
+            <Text style={styles.sectionTitle}>Recent Sermons</Text>
+          </View>
           <TouchableOpacity onPress={() => navigation.navigate('Sermons')}>
             <Text style={styles.seeAll}>See All →</Text>
           </TouchableOpacity>
@@ -267,13 +287,13 @@ export default function HomeScreen() {
           <TouchableOpacity
             key={sermon.id}
             style={styles.sermonCard}
-            onPress={() => navigation.navigate('SermonDetail', { sermonId: sermon.id })}
+            onPress={() => navigation.navigate('Sermons')}
             activeOpacity={0.9}
           >
             {sermon.thumbnailUrl && (
               <View style={styles.sermonThumbnailContainer}>
                 <Image
-                  source={{ uri: `http://localhost:5000${sermon.thumbnailUrl}` }}
+                  source={{ uri: `${getServerUrl()}${sermon.thumbnailUrl}` }}
                   style={styles.sermonThumbnail}
                 />
               </View>
@@ -281,10 +301,16 @@ export default function HomeScreen() {
             <View style={styles.sermonInfo}>
               <Text style={styles.sermonTitle} numberOfLines={2}>{sermon.title}</Text>
               <View style={styles.sermonMeta}>
-                <Text style={styles.sermonPreacher}>👤 {sermon.preacher}</Text>
-                <Text style={styles.sermonDate}>
-                  📅 {new Date(sermon.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </Text>
+                <View style={styles.sermonMetaItem}>
+                  <Ionicons name="person-outline" size={14} color={colors.textSecondary} />
+                  <Text style={styles.sermonPreacher}>{sermon.preacher}</Text>
+                </View>
+                <View style={styles.sermonMetaItem}>
+                  <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
+                  <Text style={styles.sermonDate}>
+                    {new Date(sermon.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </Text>
+                </View>
               </View>
             </View>
           </TouchableOpacity>
@@ -436,6 +462,11 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   seeAll: {
     fontSize: 14,
     color: colors.primary[500],
@@ -482,6 +513,11 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
     marginBottom: 6,
+  },
+  eventMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   eventDate: {
     fontSize: 13,
@@ -534,6 +570,11 @@ const createStyles = (colors: any) => StyleSheet.create({
   sermonMeta: {
     flexDirection: 'row',
     gap: 12,
+  },
+  sermonMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   sermonPreacher: {
     fontSize: 13,

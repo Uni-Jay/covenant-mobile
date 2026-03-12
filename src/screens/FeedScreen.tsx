@@ -25,6 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { feedService, api } from '../services';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { getServerUrl } from '../config/network.config';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -90,11 +91,10 @@ interface Member {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const SERVER_BASE = 'http://localhost:5000';
 const getPhotoUrl = (path?: string | null): string | null => {
   if (!path) return null;
   if (path.startsWith('http')) return path;
-  return `${SERVER_BASE}${path}`;
+  return `${getServerUrl()}${path}`;
 };
 
 const formatTs = (ts: string): string => {

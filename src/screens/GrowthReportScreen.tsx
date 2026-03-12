@@ -10,6 +10,7 @@ import {
   RefreshControl,
   Dimensions
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { dashboardService } from '../services';
 import { colors, primaryColor } from '../theme/colors';
 
@@ -79,9 +80,16 @@ const GrowthReportScreen = () => {
                   {stats.totalMembers || 0}
                 </Text>
                 {stats.memberGrowthRate !== undefined && (
-                  <Text style={[styles.growthRate, { color: stats.memberGrowthRate >= 0 ? '#10B981' : '#EF4444' }]}>
-                    {stats.memberGrowthRate >= 0 ? 'â†‘' : 'â†“'} {Math.abs(stats.memberGrowthRate)}%
-                  </Text>
+                  <View style={styles.growthRateContainer}>
+                    <Ionicons 
+                      name={stats.memberGrowthRate >= 0 ? 'trending-up' : 'trending-down'} 
+                      size={16} 
+                      color={stats.memberGrowthRate >= 0 ? '#10B981' : '#EF4444'} 
+                    />
+                    <Text style={[styles.growthRate, { color: stats.memberGrowthRate >= 0 ? '#10B981' : '#EF4444' }]}>
+                      {Math.abs(stats.memberGrowthRate)}%
+                    </Text>
+                  </View>
                 )}
               </View>
               <View style={[styles.summaryCard, { backgroundColor: '#10B98120' }]}>
@@ -104,7 +112,7 @@ const GrowthReportScreen = () => {
                   <Text style={styles.conversionLabel}>Total First-Timers</Text>
                 </View>
                 <View style={styles.conversionArrow}>
-                  <Text style={styles.arrowText}>â†’</Text>
+                  <Ionicons name="arrow-forward" size={32} color="#9CA3AF" />
                 </View>
                 <View style={styles.conversionStat}>
                   <Text style={styles.conversionValue}>{stats.convertedMembers || 0}</Text>
@@ -179,7 +187,7 @@ const GrowthReportScreen = () => {
                     <Text style={styles.givingMonth}>{month.month}</Text>
                     <Text style={styles.givingCount}>{month.donations} donations</Text>
                   </View>
-                  <Text style={styles.givingAmount}>â‚¦{month.total.toLocaleString()}</Text>
+                  <Text style={styles.givingAmount}>₦{month.total.toLocaleString()}</Text>
                 </View>
               ))}
             </View>
@@ -299,6 +307,11 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     marginBottom: 5,
+  },
+  growthRateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   growthRate: {
     fontSize: 14,

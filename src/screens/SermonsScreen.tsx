@@ -15,8 +15,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { sermonsService } from '../services';
 import { Sermon } from '../types';
 import { useTheme } from '../context/ThemeContext';
+import { getServerUrl } from '../config/network.config';
 
 const { width } = Dimensions.get('window');
+
+const getImageUrl = (imageUrl: string) => {
+  if (!imageUrl) return '';
+  if (imageUrl.startsWith('http')) return imageUrl;
+  return `${getServerUrl()}${imageUrl}`;
+};
 
 export default function SermonsScreen() {
   const navigation = useNavigation<any>();
@@ -126,10 +133,17 @@ export default function SermonsScreen() {
                 style={styles.cardGradient}
               >
                 <View style={styles.thumbnailContainer}>
-                  <Image
-                    source={{ uri: sermon.thumbnailUrl ? `http://localhost:5000${sermon.thumbnailUrl}` : 'https://via.placeholder.com/350x200' }}
-                    style={styles.thumbnail}
-                  />
+                  {sermon.thumbnailUrl ? (
+                    <Image
+                      source={{ uri: getImageUrl(sermon.thumbnailUrl) }}
+                      style={styles.thumbnail}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.thumbnail, { backgroundColor: colors.gray[300], justifyContent: 'center', alignItems: 'center' }]}>
+                      <Text style={{ fontSize: 40 }}>🎙️</Text>
+                    </View>
+                  )}
                   <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.7)']}
                     style={styles.thumbnailOverlay}

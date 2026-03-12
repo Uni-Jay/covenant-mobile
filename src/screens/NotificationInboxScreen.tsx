@@ -383,7 +383,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   unreadCard: {
     borderLeftWidth: 4,
-    borderLeftColor: '#2563eb',
+    borderLeftColor: '#9333ea',
   },
   notificationContent: {
     flexDirection: 'row',

@@ -16,13 +16,14 @@ import { eventsService } from '../services';
 import { Event } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
+import { getServerUrl } from '../config/network.config';
 
 const { width } = Dimensions.get('window');
 
 const getImageUrl = (imageUrl: string) => {
   if (!imageUrl) return '';
   if (imageUrl.startsWith('http')) return imageUrl;
-  return `http://localhost:5000${imageUrl}`;
+  return `${getServerUrl()}${imageUrl}`;
 };
 
 export default function EventDetailScreen({ route, navigation }: any) {

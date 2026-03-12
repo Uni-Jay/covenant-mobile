@@ -15,14 +15,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { authService } from '../services';
-
-// Base server URL for serving uploaded files
-const SERVER_BASE = Platform.OS === 'android' ? 'http://localhost:5000' : 'http://localhost:5000';
+import { getServerUrl } from '../config/network.config';
 
 function getPhotoUrl(path?: string | null): string | null {
   if (!path) return null;
   if (path.startsWith('http')) return path;
-  return SERVER_BASE + path;
+  return getServerUrl() + path;
 }
 
 export default function EditProfileScreen({ navigation }: any) {

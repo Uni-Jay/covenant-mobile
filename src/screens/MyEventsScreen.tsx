@@ -14,6 +14,7 @@ import { useTheme } from '../context/ThemeContext';
 import { eventsService } from '../services';
 import { Event } from '../types';
 import { colors } from '../theme/colors';
+import { getServerUrl } from '../config/network.config';
 
 export default function MyEventsScreen({ navigation }: any) {
   const { colors: themeColors } = useTheme();
@@ -104,7 +105,7 @@ export default function MyEventsScreen({ navigation }: any) {
           {myEvents.map((event) => (
             <View key={event.id} style={styles.eventCard}>
               <Image
-                source={{ uri: `http://localhost:5000${event.imageUrl}` }}
+                source={{ uri: `${getServerUrl()}${event.imageUrl}` }}
                 style={styles.eventImage}
               />
               <View style={styles.eventContent}>

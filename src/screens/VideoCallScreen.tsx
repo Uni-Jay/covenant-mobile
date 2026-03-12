@@ -212,7 +212,7 @@ const VideoCallScreen = () => {
             />
           ) : (
             <LinearGradient
-              colors={['#1e3a8a', '#3b82f6', '#60a5fa']}
+              colors={['#581c87', '#9333ea', '#c084fc']}
               style={styles.placeholderGradient}
             >
               <View style={styles.waitingContainer}>

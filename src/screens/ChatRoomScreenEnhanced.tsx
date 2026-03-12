@@ -34,6 +34,7 @@ import api, { chatService } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import socketService from '../services/socket.service';
+import { getServerUrl } from '../config/network.config';
 
 type RouteParams = {
   ChatRoom: {
@@ -112,7 +113,7 @@ const getSenderColor = (name: string): string => {
 const VoiceNotePlayer = ({ uri, isOwn, savedDuration, senderInitials }: {
   uri: string; isOwn: boolean; savedDuration: number; senderInitials?: string;
 }) => {
-  const fullUri = uri.startsWith('http') ? uri : `http://localhost:5000${uri}`;
+  const fullUri = uri.startsWith('http') ? uri : `${getServerUrl()}${uri}`;
   const player = useAudioPlayer(null);
   const status = useAudioPlayerStatus(player);
   const [loaded, setLoaded] = useState(false);
@@ -942,7 +943,7 @@ const ChatRoomScreenEnhanced = () => {
       }
       const fileUrl = contextMessage.fileUrl.startsWith('http')
         ? contextMessage.fileUrl
-        : `http://localhost:5000${contextMessage.fileUrl}`;
+        : `${getServerUrl()}${contextMessage.fileUrl}`;
       const fileName = fileUrl.split('/').pop() || `media_${Date.now()}`;
       const fs = FileSystem as any;
       const tempDir = fs.documentDirectory ?? fs.cacheDirectory ?? '';
@@ -1111,7 +1112,7 @@ const ChatRoomScreenEnhanced = () => {
                 onPress={() => {
                   const fullUrl = item.fileUrl!.startsWith('http') 
                     ? item.fileUrl! 
-                    : `http://localhost:5000${item.fileUrl}`;
+                    : `${getServerUrl()}${item.fileUrl}`;
                   setPreviewImage({ uri: fullUrl, messageId: item.id, isOwn: item.isOwn });
                 }}
                 activeOpacity={0.9}
@@ -1119,7 +1120,7 @@ const ChatRoomScreenEnhanced = () => {
               >
                 <Image 
                   source={{ 
-                    uri: item.fileUrl.startsWith('http') ? item.fileUrl : `http://localhost:5000${item.fileUrl}` 
+                    uri: item.fileUrl.startsWith('http') ? item.fileUrl : `${getServerUrl()}${item.fileUrl}` 
                   }} 
                   style={styles.imageMessage}
                   resizeMode="cover"
@@ -1161,7 +1162,7 @@ const ChatRoomScreenEnhanced = () => {
                         onPress={async () => {
                           const fileUrl = item.fileUrl!.startsWith('http') 
                             ? item.fileUrl! 
-                            : `http://localhost:5000${item.fileUrl}`;
+                            : `${getServerUrl()}${item.fileUrl}`;
                           const fileName = fileUrl.split('/').pop() || 'document';
                           const fs = FileSystem as any;
                           const tempDir = fs.cacheDirectory ?? fs.documentDirectory ?? '';
@@ -1187,7 +1188,7 @@ const ChatRoomScreenEnhanced = () => {
                         onPress={async () => {
                           const fileUrl = item.fileUrl!.startsWith('http') 
                             ? item.fileUrl! 
-                            : `http://localhost:5000${item.fileUrl}`;
+                            : `${getServerUrl()}${item.fileUrl}`;
                           const fileName = fileUrl.split('/').pop() || 'document';
                           const fs = FileSystem as any;
                           const tempDir = fs.cacheDirectory ?? fs.documentDirectory ?? '';
@@ -1227,14 +1228,14 @@ const ChatRoomScreenEnhanced = () => {
                 style={styles.mediaContainer}
                 onPress={() => {
                   const fullUrl = item.fileUrl!.startsWith('http')
-                    ? item.fileUrl! : `http://localhost:5000${item.fileUrl}`;
+                    ? item.fileUrl! : `${getServerUrl()}${item.fileUrl}`;
                   Linking.openURL(fullUrl);
                 }}
               >
                 <Video
                   source={{
                     uri: item.fileUrl.startsWith('http')
-                      ? item.fileUrl : `http://localhost:5000${item.fileUrl}`,
+                      ? item.fileUrl : `${getServerUrl()}${item.fileUrl}`,
                   }}
                   style={styles.videoMessage}
                   useNativeControls={false}
@@ -1321,7 +1322,7 @@ const ChatRoomScreenEnhanced = () => {
         <View style={styles.headerAvatar}>
           {currentGroupPhoto ? (
             <Image
-              source={{ uri: `http://localhost:5000${currentGroupPhoto}` }}
+              source={{ uri: `${getServerUrl()}${currentGroupPhoto}` }}
               style={{ width: 38, height: 38, borderRadius: 19 }}
             />
           ) : (

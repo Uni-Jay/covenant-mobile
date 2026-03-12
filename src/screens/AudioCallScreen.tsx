@@ -207,7 +207,7 @@ const AudioCallScreen = () => {
 
   return (
     <LinearGradient
-      colors={['#1e40af', '#3b82f6', '#60a5fa']}
+      colors={['#6b21a8', '#9333ea', '#c084fc']}
       style={styles.container}
     >
       <SafeAreaView style={styles.content} edges={['top']}>

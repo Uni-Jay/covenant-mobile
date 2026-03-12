@@ -10,13 +10,19 @@ import {
   TextInput,
   Modal,
   ActivityIndicator,
+  Platform,
+  Image,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { sermonsService } from '../services';
 import { Sermon } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
+import api from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function SermonManagementScreen({ navigation }: any) {
   const { colors: themeColors } = useTheme();
@@ -28,6 +34,9 @@ export default function SermonManagementScreen({ navigation }: any) {
   const [showModal, setShowModal] = useState(false);
   const [editingSermon, setEditingSermon] = useState<Sermon | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [useFileUpload, setUseFileUpload] = useState(true); // Toggle between file upload and URL
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
   
   const [formData, setFormData] = useState({
     title: '',
@@ -39,6 +48,14 @@ export default function SermonManagementScreen({ navigation }: any) {
     audioUrl: '',
     pdfUrl: '',
   });
+
+  // Files for upload
+  const [selectedFiles, setSelectedFiles] = useState<{
+    video?: { uri: string; name: string; type: string };
+    audio?: { uri: string; name: string; type: string };
+    pdf?: { uri: string; name: string; type: string };
+    thumbnail?: { uri: string; name: string; type: string };
+  }>({});
 
   // Check if user has permission
   const hasPermission = user?.role === 'admin' || 
@@ -78,26 +95,32 @@ export default function SermonManagementScreen({ navigation }: any) {
 
   const handleAddNew = () => {
     setEditingSermon(null);
+    const today = new Date();
+    setSelectedDate(today);
     setFormData({
       title: '',
       description: '',
       preacher: '',
-      date: '',
+      date: today.toISOString().split('T')[0],
       category: 'Sunday Service',
       videoUrl: '',
       audioUrl: '',
       pdfUrl: '',
     });
+    setSelectedFiles({});
+    setUseFileUpload(true);
     setShowModal(true);
   };
 
   const handleEdit = (sermon: Sermon) => {
     setEditingSermon(sermon);
+    const sermonDate = new Date(sermon.date);
+    setSelectedDate(sermonDate);
     setFormData({
       title: sermon.title,
       description: sermon.description,
       preacher: sermon.preacher,
-      date: new Date(sermon.date).toISOString().split('T')[0],
+      date: sermonDate.toISOString().split('T')[0],
       category: sermon.category,
       videoUrl: sermon.videoUrl || '',
       audioUrl: sermon.audioUrl || '',
@@ -129,6 +152,38 @@ export default function SermonManagementScreen({ navigation }: any) {
     );
   };
 
+  const pickFile = async (type: 'video' | 'audio' | 'pdf' | 'thumbnail') => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: type === 'video' ? 'video/*' : 
+              type === 'audio' ? 'audio/*' : 
+              type === 'thumbnail' ? 'image/*' : 
+              'application/pdf',
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const file = result.assets[0];
+        setSelectedFiles({
+          ...selectedFiles,
+          [type]: {
+            uri: file.uri,
+            name: file.name,
+            type: file.mimeType || 'application/octet-stream',
+          },
+        });
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick file');
+    }
+  };
+
+  const removeFile = (type: 'video' | 'audio' | 'pdf' | 'thumbnail') => {
+    const updated = { ...selectedFiles };
+    delete updated[type];
+    setSelectedFiles(updated);
+  };
+
   const handleSave = async () => {
     if (!formData.title || !formData.description || !formData.preacher || !formData.date) {
       Alert.alert('Error', 'Please fill in all required fields');
@@ -138,15 +193,71 @@ export default function SermonManagementScreen({ navigation }: any) {
     setIsSaving(true);
     try {
       if (editingSermon) {
+        // For editing, just update text fields (file upload not supported in edit mode yet)
         await sermonsService.update(editingSermon.id, formData);
         Alert.alert('Success', 'Sermon updated successfully');
       } else {
-        await sermonsService.create(formData);
-        Alert.alert('Success', 'Sermon created successfully');
+        // For creating new sermon, use FormData if files are selected
+        if (useFileUpload && Object.keys(selectedFiles).length > 0) {
+          const formDataToSend = new FormData();
+          
+          // Add text fields
+          formDataToSend.append('title', formData.title);
+          formDataToSend.append('description', formData.description);
+          formDataToSend.append('preacher', formData.preacher);
+          formDataToSend.append('date', formData.date);
+          formDataToSend.append('category', formData.category);
+          
+          // Add files
+          if (selectedFiles.video) {
+            formDataToSend.append('video', {
+              uri: selectedFiles.video.uri,
+              name: selectedFiles.video.name,
+              type: selectedFiles.video.type,
+            } as any);
+          }
+          if (selectedFiles.audio) {
+            formDataToSend.append('audio', {
+              uri: selectedFiles.audio.uri,
+              name: selectedFiles.audio.name,
+              type: selectedFiles.audio.type,
+            } as any);
+          }
+          if (selectedFiles.pdf) {
+            formDataToSend.append('pdf', {
+              uri: selectedFiles.pdf.uri,
+              name: selectedFiles.pdf.name,
+              type: selectedFiles.pdf.type,
+            } as any);
+          }
+          if (selectedFiles.thumbnail) {
+            formDataToSend.append('thumbnail', {
+              uri: selectedFiles.thumbnail.uri,
+              name: selectedFiles.thumbnail.name,
+              type: selectedFiles.thumbnail.type,
+            } as any);
+          }
+
+          // Send with multipart form data
+          const token = await AsyncStorage.getItem('token');
+          const response = await api.post('/sermons', formDataToSend, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          
+          Alert.alert('Success', 'Sermon created successfully');
+        } else {
+          // Use regular JSON if no files or using URL mode
+          await sermonsService.create(formData);
+          Alert.alert('Success', 'Sermon created successfully');
+        }
       }
       setShowModal(false);
       loadSermons();
     } catch (error: any) {
+      console.error('Save error:', error);
       Alert.alert('Error', error.response?.data?.message || 'Failed to save sermon');
     } finally {
       setIsSaving(false);
@@ -276,13 +387,34 @@ export default function SermonManagementScreen({ navigation }: any) {
               placeholder="Preacher name"
             />
 
-            <Text style={styles.label}>Date * (YYYY-MM-DD)</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.date}
-              onChangeText={(text) => setFormData({ ...formData, date: text })}
-              placeholder="2026-12-31"
-            />
+            <Text style={styles.label}>Date *</Text>
+            <TouchableOpacity 
+              style={styles.datePickerButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={styles.datePickerText}>
+                📅 {formData.date ? new Date(formData.date).toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                }) : 'Select Date'}
+              </Text>
+            </TouchableOpacity>
+            
+            {showDatePicker && (
+              <DateTimePicker
+                value={selectedDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(event, date) => {
+                  setShowDatePicker(Platform.OS === 'ios');
+                  if (date) {
+                    setSelectedDate(date);
+                    setFormData({ ...formData, date: date.toISOString().split('T')[0] });
+                  }
+                }}
+              />
+            )}
 
             <Text style={styles.label}>Category *</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
@@ -307,29 +439,149 @@ export default function SermonManagementScreen({ navigation }: any) {
               ))}
             </ScrollView>
 
-            <Text style={styles.label}>Video URL (YouTube or direct link)</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.videoUrl}
-              onChangeText={(text) => setFormData({ ...formData, videoUrl: text })}
-              placeholder="https://youtube.com/watch?v=..."
-            />
+            {/* Upload Mode Toggle */}
+            {!editingSermon && (
+              <View style={styles.toggleContainer}>
+                <TouchableOpacity
+                  style={[styles.toggleButton, useFileUpload && styles.toggleButtonActive]}
+                  onPress={() => setUseFileUpload(true)}
+                >
+                  <Text style={[styles.toggleText, useFileUpload && styles.toggleTextActive]}>
+                    📁 Upload Files
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.toggleButton, !useFileUpload && styles.toggleButtonActive]}
+                  onPress={() => setUseFileUpload(false)}
+                >
+                  <Text style={[styles.toggleText, !useFileUpload && styles.toggleTextActive]}>
+                    🔗 Enter URLs
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
-            <Text style={styles.label}>Audio URL (Optional)</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.audioUrl}
-              onChangeText={(text) => setFormData({ ...formData, audioUrl: text })}
-              placeholder="https://..."
-            />
+            {/* File Upload Mode */}
+            {useFileUpload && !editingSermon ? (
+              <>
+                <Text style={styles.sectionTitle}>📹 Upload Media Files</Text>
+                
+                {/* Video File */}
+                <Text style={styles.label}>Video File (with audio included)</Text>
+                {selectedFiles.video ? (
+                  <View style={styles.fileSelected}>
+                    <Text style={styles.fileName}>📹 {selectedFiles.video.name}</Text>
+                    <TouchableOpacity onPress={() => removeFile('video')}>
+                      <Text style={styles.removeFile}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.filePickerButton}
+                    onPress={() => pickFile('video')}
+                  >
+                    <Text style={styles.filePickerText}>+ Choose Video File</Text>
+                  </TouchableOpacity>
+                )}
+                {selectedFiles.video && (
+                  <Text style={styles.helperText}>✓ Video already contains audio</Text>
+                )}
 
-            <Text style={styles.label}>PDF URL (Optional)</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.pdfUrl}
-              onChangeText={(text) => setFormData({ ...formData, pdfUrl: text })}
-              placeholder="https://..."
-            />
+                {/* Audio File - Only show if no video */}
+                {!selectedFiles.video && (
+                  <>
+                    <Text style={styles.label}>Audio File (for audio-only sermons)</Text>
+                    {selectedFiles.audio ? (
+                      <View style={styles.fileSelected}>
+                        <Text style={styles.fileName}>🎵 {selectedFiles.audio.name}</Text>
+                        <TouchableOpacity onPress={() => removeFile('audio')}>
+                          <Text style={styles.removeFile}>Remove</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.filePickerButton}
+                        onPress={() => pickFile('audio')}
+                      >
+                        <Text style={styles.filePickerText}>+ Choose Audio File</Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                )}
+
+                {/* PDF File */}
+                <Text style={styles.label}>PDF File (Optional)</Text>
+                {selectedFiles.pdf ? (
+                  <View style={styles.fileSelected}>
+                    <Text style={styles.fileName}>📄 {selectedFiles.pdf.name}</Text>
+                    <TouchableOpacity onPress={() => removeFile('pdf')}>
+                      <Text style={styles.removeFile}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.filePickerButton}
+                    onPress={() => pickFile('pdf')}
+                  >
+                    <Text style={styles.filePickerText}>+ Choose PDF File</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Thumbnail File */}
+                <Text style={styles.label}>Thumbnail Image (Optional)</Text>
+                {selectedFiles.thumbnail ? (
+                  <>
+                    <View style={styles.fileSelected}>
+                      <Text style={styles.fileName}>🖼️ {selectedFiles.thumbnail.name}</Text>
+                      <TouchableOpacity onPress={() => removeFile('thumbnail')}>
+                        <Text style={styles.removeFile}>Remove</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <Image 
+                      source={{ uri: selectedFiles.thumbnail.uri }} 
+                      style={styles.thumbnailPreview} 
+                      resizeMode="cover"
+                    />
+                  </>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.filePickerButton}
+                    onPress={() => pickFile('thumbnail')}
+                  >
+                    <Text style={styles.filePickerText}>+ Choose Thumbnail Image</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : (
+              <>
+                {/* URL Input Mode */}
+                <Text style={styles.sectionTitle}>🔗 Media URLs</Text>
+
+                <Text style={styles.label}>Video URL (YouTube or direct link)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.videoUrl}
+                  onChangeText={(text) => setFormData({ ...formData, videoUrl: text })}
+                  placeholder="https://youtube.com/watch?v=..."
+                />
+
+                <Text style={styles.label}>Audio URL (Optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.audioUrl}
+                  onChangeText={(text) => setFormData({ ...formData, audioUrl: text })}
+                  placeholder="https://..."
+                />
+
+                <Text style={styles.label}>PDF URL (Optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.pdfUrl}
+                  onChangeText={(text) => setFormData({ ...formData, pdfUrl: text })}
+                  placeholder="https://..."
+                />
+              </>
+            )}
 
             <View style={styles.modalActions}>
               <TouchableOpacity
@@ -529,6 +781,26 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.gray[300],
   },
+  datePickerButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: colors.gray[300],
+    marginBottom: 8,
+  },
+  datePickerText: {
+    fontSize: 16,
+    color: colors.gray[900],
+  },
+  helperText: {
+    fontSize: 13,
+    color: '#059669',
+    marginTop: -8,
+    marginBottom: 8,
+    fontWeight: '500',
+  },
   textArea: {
     height: 100,
     textAlignVertical: 'top',
@@ -554,6 +826,82 @@ const createStyles = (colors: any) => StyleSheet.create({
   categoryChipTextActive: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.gray[200],
+    borderRadius: 10,
+    padding: 4,
+    marginVertical: 16,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  toggleButtonActive: {
+    backgroundColor: colors.primary[600],
+  },
+  toggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.gray[700],
+  },
+  toggleTextActive: {
+    color: '#FFFFFF',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.gray[900],
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  filePickerButton: {
+    backgroundColor: colors.primary[50],
+    borderWidth: 2,
+    borderColor: colors.primary[300],
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  filePickerText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.primary[700],
+  },
+  fileSelected: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#dcfce7',
+    borderWidth: 1,
+    borderColor: '#86efac',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  fileName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.gray[900],
+    flex: 1,
+  },
+  removeFile: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#dc2626',
+  },
+  thumbnailPreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 16,
+    backgroundColor: colors.gray[200],
   },
   modalActions: {
     flexDirection: 'row',

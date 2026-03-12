@@ -10,9 +10,11 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
+import { getServerUrl } from '../config/network.config';
 
 const isSuperAdmin = (user: any) => {
   if (!user) return false;
@@ -89,42 +91,42 @@ export default function ProfileScreen() {
 
   // Define menu items with role restrictions
   const allMenuItems = [
-    { icon: '👤', title: 'Edit Profile', route: 'EditProfile', requiresAdmin: false },
-    { icon: '🔔', title: 'Notifications', route: 'NotificationInbox', requiresAdmin: false },
-    { icon: '📅', title: 'Events', route: 'Events', requiresAdmin: false },
-    { icon: '✅', title: 'Scan Attendance', route: 'Attendance', requiresAdmin: false },
-    { icon: '👥', title: 'First Timers', route: 'FirstTimers', requiresAdmin: false },
-    { icon: '📺', title: 'Live Stream', route: 'LiveStream', requiresAdmin: false },
-    { icon: '🎙️', title: 'Sermons', route: 'Sermons', requiresAdmin: false },
-    { icon: '💝', title: 'Give', route: 'Give', requiresAdmin: false },
-    { icon: '🤖', title: 'AI Bible Assistant', route: 'AIChat', requiresAdmin: false },
-    { icon: '💳', title: 'Giving History', route: 'GivingHistory', requiresAdmin: false },
-    { icon: '⚙️', title: 'Settings', route: 'Settings', requiresAdmin: false },
-    { icon: '❓', title: 'Help & Support', route: 'Support', requiresAdmin: false },
+    { iconLib: 'Ionicons', iconName: 'person-outline', title: 'Edit Profile', route: 'EditProfile', requiresAdmin: false },
+    { iconLib: 'Ionicons', iconName: 'notifications-outline', title: 'Notifications', route: 'NotificationInbox', requiresAdmin: false },
+    { iconLib: 'Ionicons', iconName: 'calendar-outline', title: 'Events', route: 'Events', requiresAdmin: false },
+    { iconLib: 'Ionicons', iconName: 'checkmark-done-outline', title: 'Scan Attendance', route: 'Attendance', requiresAdmin: false },
+    { iconLib: 'Ionicons', iconName: 'people-outline', title: 'First Timers', route: 'FirstTimers', requiresAdmin: false },
+    { iconLib: 'Ionicons', iconName: 'tv-outline', title: 'Live Stream', route: 'LiveStream', requiresAdmin: false },
+    { iconLib: 'Ionicons', iconName: 'mic-outline', title: 'Sermons', route: 'Sermons', requiresAdmin: false },
+    { iconLib: 'Ionicons', iconName: 'heart-outline', title: 'Give', route: 'Give', requiresAdmin: false },
+    { iconLib: 'Ionicons', iconName: 'chatbubble-ellipses-outline', title: 'AI Bible Assistant', route: 'AIChat', requiresAdmin: false },
+    { iconLib: 'Ionicons', iconName: 'card-outline', title: 'Giving History', route: 'GivingHistory', requiresAdmin: false },
+    { iconLib: 'Ionicons', iconName: 'settings-outline', title: 'Settings', route: 'Settings', requiresAdmin: false },
+    { iconLib: 'Ionicons', iconName: 'help-circle-outline', title: 'Help & Support', route: 'Support', requiresAdmin: false },
     
     // Admin and Media Department Features
-    { icon: '📢', title: 'Send Notifications', route: 'Notifications', requiresAdminOrMedia: true },
-    { icon: '📅', title: 'Manage Events', route: 'EventManagement', requiresAdminOrMedia: true },
-    { icon: '🎙️', title: 'Manage Sermons', route: 'SermonManagement', requiresAdminOrMedia: true },
-    { icon: '✅', title: 'Approve Donations', route: 'DonationApproval', requiresAdminOrMedia: true },
-    { icon: '📊', title: 'Donation Reports', route: 'DonationReports', requiresAdminOrMedia: true },
-    { icon: '📄', title: 'Church Documents', route: 'ChurchDocuments', requiresAdminOrMedia: true },
-    { icon: '🙏', title: 'Prayer Management', route: 'PrayerManagement', requiresAdminOrMedia: true },
+    { iconLib: 'Ionicons', iconName: 'megaphone-outline', title: 'Send Notifications', route: 'Notifications', requiresAdminOrMedia: true },
+    { iconLib: 'MaterialCommunityIcons', iconName: 'calendar-edit', title: 'Manage Events', route: 'EventManagement', requiresAdminOrMedia: true },
+    { iconLib: 'MaterialCommunityIcons', iconName: 'microphone-settings', title: 'Manage Sermons', route: 'SermonManagement', requiresAdminOrMedia: true },
+    { iconLib: 'MaterialIcons', iconName: 'approval', title: 'Approve Donations', route: 'DonationApproval', requiresAdminOrMedia: true },
+    { iconLib: 'MaterialCommunityIcons', iconName: 'file-chart', title: 'Donation Reports', route: 'DonationReports', requiresAdminOrMedia: true },
+    { iconLib: 'Ionicons', iconName: 'document-text-outline', title: 'Church Documents', route: 'ChurchDocuments', requiresAdminOrMedia: true },
+    { iconLib: 'MaterialCommunityIcons', iconName: 'hand-back-right', title: 'Prayer Management', route: 'PrayerManagement', requiresAdminOrMedia: true },
     
     // Super Admin Only Features
-    { icon: '📊', title: 'Dashboard', route: 'Dashboard', requiresAdmin: true },
-    { icon: '🏢', title: 'Department Management', route: 'DepartmentManagement', requiresAdmin: true },
-    { icon: '👥', title: 'User Management', route: 'UserManagement', requiresAdmin: true },
-    { icon: '📅', title: 'My Events', route: 'MyEvents', requiresAdmin: true },
-    { icon: '🙏', title: 'My Prayer Requests', route: 'MyPrayers', requiresAdmin: false },
-    { icon: '📋', title: 'Attendance Report', route: 'AttendanceReport', requiresAdmin: true },
-    { icon: '🔳', title: 'Generate QR Code', route: 'GenerateAttendanceQR', requiresAdmin: true },
-    { icon: '✍️', title: 'Manual Attendance', route: 'ManualAttendance', requiresAdmin: true },
-    { icon: '📱', title: 'Scan First Timer', route: 'FirstTimerQR', requiresAdmin: true },
-    { icon: '📝', title: 'Register First Timer', route: 'FirstTimerRegister', requiresAdmin: true },
-    { icon: '💰', title: 'Giving Report', route: 'GivingReport', requiresAdmin: true },
-    { icon: '📅', title: 'Events Report', route: 'EventsReport', requiresAdmin: true },
-    { icon: '📈', title: 'Growth Report', route: 'GrowthReport', requiresAdmin: true },
+    { iconLib: 'MaterialCommunityIcons', iconName: 'view-dashboard-outline', title: 'Dashboard', route: 'Dashboard', requiresAdmin: true },
+    { iconLib: 'MaterialIcons', iconName: 'business', title: 'Department Management', route: 'DepartmentManagement', requiresAdmin: true },
+    { iconLib: 'MaterialCommunityIcons', iconName: 'account-group', title: 'User Management', route: 'UserManagement', requiresAdmin: true },
+    { iconLib: 'MaterialCommunityIcons', iconName: 'calendar-check', title: 'My Events', route: 'MyEvents', requiresAdmin: true },
+    { iconLib: 'Ionicons', iconName: 'prism-outline', title: 'My Prayer Requests', route: 'MyPrayers', requiresAdmin: false },
+    { iconLib: 'MaterialCommunityIcons', iconName: 'clipboard-list-outline', title: 'Attendance Report', route: 'AttendanceReport', requiresAdmin: true },
+    { iconLib: 'MaterialCommunityIcons', iconName: 'qrcode', title: 'Generate QR Code', route: 'GenerateAttendanceQR', requiresAdmin: true },
+    { iconLib: 'MaterialCommunityIcons', iconName: 'clipboard-edit-outline', title: 'Manual Attendance', route: 'ManualAttendance', requiresAdmin: true },
+    { iconLib: 'MaterialCommunityIcons', iconName: 'qrcode-scan', title: 'Scan First Timer', route: 'FirstTimerQR', requiresAdmin: true },
+    { iconLib: 'MaterialCommunityIcons', iconName: 'account-plus-outline', title: 'Register First Timer', route: 'FirstTimerRegister', requiresAdmin: true },
+    { iconLib: 'MaterialCommunityIcons', iconName: 'cash-multiple', title: 'Giving Report', route: 'GivingReport', requiresAdmin: true },
+    { iconLib: 'MaterialCommunityIcons', iconName: 'calendar-multiple-check', title: 'Events Report', route: 'EventsReport', requiresAdmin: true },
+    { iconLib: 'MaterialCommunityIcons', iconName: 'chart-line', title: 'Growth Report', route: 'GrowthReport', requiresAdmin: true },
   ];
 
   // Check if user is in Media or Prayer department
@@ -181,7 +183,7 @@ export default function ProfileScreen() {
         <View style={styles.avatarContainer}>
           {user?.photo ? (
             <Image
-              source={{ uri: user.photo.startsWith('http') ? user.photo : `http://localhost:5000${user.photo}` }}
+              source={{ uri: user.photo.startsWith('http') ? user.photo : `${getServerUrl()}${user.photo}` }}
               style={[styles.avatar, { borderRadius: 60 }]}
             />
           ) : (
@@ -200,9 +202,16 @@ export default function ProfileScreen() {
         <Text style={styles.email}>{user?.email}</Text>
         {user?.gender && (
           <View style={styles.genderBadge}>
-            <Text style={styles.genderText}>
-              {user.gender === 'male' ? '👨 Brother' : '👩 Sister'}
-            </Text>
+            <View style={styles.genderBadgeContent}>
+              <Ionicons 
+                name={user.gender === 'male' ? 'man' : 'woman'} 
+                size={16} 
+                color={colors.white} 
+              />
+              <Text style={styles.genderText}>
+                {user.gender === 'male' ? 'Brother' : 'Sister'}
+              </Text>
+            </View>
           </View>
         )}
         <View style={styles.roleBadge}>
@@ -231,26 +240,41 @@ export default function ProfileScreen() {
 
       {/* Menu Items */}
       <View style={[styles.menu, { backgroundColor: themeColors.surface }]}>
-        {menuItems.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.menuItem,
-              { borderBottomColor: themeColors.border },
-              index === menuItems.length - 1 && styles.lastMenuItem
-            ]}
-            onPress={() => navigation.navigate(item.route)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIconContainer, { backgroundColor: themeColors.primary[50] }]}>
-                <Text style={styles.menuIcon}>{item.icon}</Text>
+        {menuItems.map((item, index) => {
+          // Render icon based on library
+          const renderIcon = () => {
+            const iconProps = { size: 22, color: themeColors.primary[600] };
+            if (item.iconLib === 'Ionicons') {
+              return <Ionicons name={item.iconName as any} {...iconProps} />;
+            } else if (item.iconLib === 'MaterialIcons') {
+              return <MaterialIcons name={item.iconName as any} {...iconProps} />;
+            } else if (item.iconLib === 'MaterialCommunityIcons') {
+              return <MaterialCommunityIcons name={item.iconName as any} {...iconProps} />;
+            }
+            return null;
+          };
+
+          return (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.menuItem,
+                { borderBottomColor: themeColors.border },
+                index === menuItems.length - 1 && styles.lastMenuItem
+              ]}
+              onPress={() => navigation.navigate(item.route)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuItemLeft}>
+                <View style={[styles.menuIconContainer, { backgroundColor: themeColors.primary[50] }]}>
+                  {renderIcon()}
+                </View>
+                <Text style={[styles.menuTitle, { color: themeColors.text }]}>{item.title}</Text>
               </View>
-              <Text style={[styles.menuTitle, { color: themeColors.text }]}>{item.title}</Text>
-            </View>
-            <Text style={[styles.menuArrow, { color: themeColors.textSecondary }]}>›</Text>
-          </TouchableOpacity>
-        ))}
+              <Ionicons name="chevron-forward" size={24} color={themeColors.textSecondary} />
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Logout Button */}
@@ -263,7 +287,7 @@ export default function ProfileScreen() {
           colors={['rgba(239, 68, 68, 0.1)', 'rgba(239, 68, 68, 0.05)']}
           style={styles.logoutGradient}
         >
-          <Text style={styles.logoutIcon}>🚪</Text>
+          <Ionicons name="log-out-outline" size={22} color={colors.error} />
           <Text style={styles.logoutText}>Logout</Text>
         </LinearGradient>
       </TouchableOpacity>
@@ -367,6 +391,11 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
     marginBottom: 12,
+  },
+  genderBadgeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   genderText: {
     fontSize: 14,

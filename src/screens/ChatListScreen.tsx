@@ -18,6 +18,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { chatService } from '../services/api';
+import { getServerUrl } from '../config/network.config';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type RootStackParamList = {
@@ -84,7 +85,7 @@ const getLastMsgDisplay = (group: GroupChat): string => {
 // ─── Image URL ────────────────────────────────────────────────────────────────
 const getImageUrl = (photo?: string) => {
   if (!photo) return undefined;
-  return photo.startsWith('http') ? photo : `http://localhost:5000${photo}`;
+  return photo.startsWith('http') ? photo : `${getServerUrl()}${photo}`;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
