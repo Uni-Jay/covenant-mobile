@@ -11,6 +11,8 @@ import {
   Share,
   Linking,
 } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { Video, ResizeMode, AVPlaybackStatus, Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -169,9 +171,30 @@ export default function SermonDetailScreen({ route, navigation }: any) {
   };
 
   const handleDownloadPDF = () => {
-    if (sermon?.pdfUrl) {
+  const handleDownloadPDF = async () => {
+    if (!sermon?.pdfUrl) return;
+    try {
+      const safeTitle = `${sermon.title} - ${sermon.preacher}`.replace(/[/\\?%*:|"<>]/g, '-');
+      const fileName = `${safeTitle}.pdf`;
+      const fs = FileSystem as any;
+      const baseDir = fs.documentDirectory ?? fs.cacheDirectory ?? '';
+      const localUri = `${baseDir}${fileName}`;
       const pdfUrl = `${getServerUrl()}${sermon.pdfUrl}`;
-      Linking.openURL(pdfUrl);
+      Alert.alert('Downloading...', `Saving "${fileName}"`);
+      const { status } = await FileSystem.downloadAsync(pdfUrl, localUri);
+      if (status === 200) {
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(localUri, { mimeType: 'application/pdf', dialogTitle: fileName });
+        } else {
+          Alert.alert('Downloaded', `Saved as: ${fileName}`);
+        }
+      } else {
+        Alert.alert('Error', 'Failed to download PDF');
+      }
+    } catch (error) {
+      console.error('PDF download error:', error);
+      Alert.alert('Error', 'Could not download the PDF');
     }
   };
 
