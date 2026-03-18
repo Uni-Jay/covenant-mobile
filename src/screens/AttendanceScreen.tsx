@@ -10,6 +10,7 @@ import {
   TextInput
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Ionicons } from '@expo/vector-icons';
 import { attendanceService } from '../services';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -63,7 +64,7 @@ const AttendanceScreen = ({ navigation }: any) => {
       const result = await attendanceService.checkIn(qrCode, serviceType);
 
       Alert.alert(
-        'âœ… Check-in Successful',
+        'Check-in Successful',
         `You have been checked in for ${serviceType.replace('_', ' ')}!`,
         [
           {
@@ -129,13 +130,23 @@ const AttendanceScreen = ({ navigation }: any) => {
   const renderAttendanceItem = (item: any, index: number) => (
     <View key={index} style={styles.attendanceItem}>
       <View style={styles.attendanceIcon}>
-        <Text style={styles.attendanceIconText}>
-          {item.service_type === 'sunday_service' ? 'â›ª' : 
-           item.service_type === 'sunday_school' ? 'ðŸ“š' :
-           item.service_type === 'tuesday_prayer' ? 'ðŸ™' :
-           item.service_type === 'thursday_bible_study' ? 'ðŸ“–' :
-           item.service_type === 'vigil' ? 'ðŸŒ™' : 'âœ…'}
-        </Text>
+        <Ionicons
+          name={
+            item.service_type === 'sunday_service'
+              ? 'people-outline'
+              : item.service_type === 'sunday_school'
+              ? 'book-outline'
+              : item.service_type === 'tuesday_prayer'
+              ? 'heart-outline'
+              : item.service_type === 'thursday_bible_study'
+              ? 'library-outline'
+              : item.service_type === 'vigil'
+              ? 'moon-outline'
+              : 'checkmark-circle-outline'
+          }
+          size={18}
+          color={themeColors.primary[700]}
+        />
       </View>
       <View style={styles.attendanceContent}>
         <Text style={styles.attendanceTitle}>
@@ -235,7 +246,7 @@ const AttendanceScreen = ({ navigation }: any) => {
           style={styles.checkInButton}
           onPress={requestCameraPermission}
         >
-          <Text style={styles.checkInIcon}>ðŸ“·</Text>
+          <Ionicons name="qr-code-outline" size={22} color="#FFFFFF" />
           <Text style={styles.checkInText}>Scan QR to Check In</Text>
         </TouchableOpacity>
       </View>
@@ -247,7 +258,7 @@ const AttendanceScreen = ({ navigation }: any) => {
           myAttendance.map((item, index) => renderAttendanceItem(item, index))
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>ðŸ“‹</Text>
+            <Ionicons name="clipboard-outline" size={40} color={themeColors.textSecondary} />
             <Text style={styles.emptyText}>No attendance records yet</Text>
             <Text style={styles.emptySubtext}>Start checking in to see your history</Text>
           </View>
@@ -262,19 +273,19 @@ const AttendanceScreen = ({ navigation }: any) => {
             style={styles.adminButton}
             onPress={() => navigation.navigate('AttendanceReport')}
           >
-            <Text style={styles.adminButtonText}>ðŸ“Š View Reports</Text>
+            <Text style={styles.adminButtonText}>View Reports</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.adminButton}
             onPress={() => navigation.navigate('GenerateAttendanceQR')}
           >
-            <Text style={styles.adminButtonText}>ðŸŽ« Generate Service QR</Text>
+            <Text style={styles.adminButtonText}>Generate Service QR</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.adminButton}
             onPress={() => navigation.navigate('ManualAttendance')}
           >
-            <Text style={styles.adminButtonText}>âœï¸ Mark Manual Attendance</Text>
+            <Text style={styles.adminButtonText}>Mark Manual Attendance</Text>
           </TouchableOpacity>
         </View>
       )}

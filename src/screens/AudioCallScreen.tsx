@@ -228,7 +228,7 @@ const AudioCallScreen = () => {
               colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']}
               style={styles.audioIconContainer}
             >
-              <Text style={styles.audioIcon}>ðŸŽ¤</Text>
+              <Text style={styles.audioIcon}>🎤</Text>
             </LinearGradient>
           </Animated.View>
           
@@ -242,13 +242,13 @@ const AudioCallScreen = () => {
           <View style={styles.statusRow}>
             <View style={[styles.networkBadge, styles[`network_${networkQuality}`]]}>
               <Text style={styles.networkIcon}>
-                {networkQuality === 'excellent' ? 'ðŸ“¶' : networkQuality === 'good' ? 'ðŸ“¶' : networkQuality === 'poor' ? 'ðŸ“µ' : 'âš ï¸'}
+                {networkQuality === 'excellent' ? '📶' : networkQuality === 'good' ? '📶' : networkQuality === 'poor' ? '📵' : '⚠️'}
               </Text>
               <Text style={styles.networkText}>{networkQuality}</Text>
             </View>
             
             <View style={styles.participantBadge}>
-              <Text style={styles.participantIcon}>ðŸ‘¥</Text>
+              <Text style={styles.participantIcon}>👥</Text>
               <Text style={styles.participantText}>{participantsCount}</Text>
             </View>
           </View>
@@ -289,7 +289,7 @@ const AudioCallScreen = () => {
               style={[styles.controlButton, isMuted && styles.controlButtonActive]}
               onPress={toggleMute}
             >
-              <Text style={styles.controlIcon}>{isMuted ? 'ðŸ”‡' : 'ðŸŽ¤'}</Text>
+              <Text style={styles.controlIcon}>{isMuted ? '🔇' : '🎤'}</Text>
               <Text style={styles.controlLabel}>{isMuted ? 'Unmute' : 'Mute'}</Text>
             </TouchableOpacity>
 
@@ -297,7 +297,7 @@ const AudioCallScreen = () => {
               style={[styles.controlButton, isSpeaker && styles.controlButtonActive]}
               onPress={toggleSpeaker}
             >
-              <Text style={styles.controlIcon}>{isSpeaker ? 'ðŸ”Š' : 'ðŸ”ˆ'}</Text>
+              <Text style={styles.controlIcon}>{isSpeaker ? '🔊' : '🔈'}</Text>
               <Text style={styles.controlLabel}>{isSpeaker ? 'Speaker' : 'Earpiece'}</Text>
             </TouchableOpacity>
           </View>

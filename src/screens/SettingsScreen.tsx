@@ -346,7 +346,7 @@ export default function SettingsScreen({ navigation }: any) {
                       // TODO: Implement API call to delete account
                       Alert.alert(
                         'Account Deletion',
-                        'Please contact church administration to delete your account. Email: admin@wordofcovenant.org or call during office hours.',
+                        'Please contact church administration to delete your account. Email: admin@hocfam.org or call during office hours.',
                         [{ text: 'OK' }]
                       );
                     } catch (error) {

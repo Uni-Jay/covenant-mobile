@@ -15,6 +15,7 @@ import { useTheme } from '../context/ThemeContext';
 import { notificationService, eventsService } from '../services';
 import { colors } from '../theme/colors';
 import api from '../services/api';
+import { hasLeadershipAccess, hasMediaDepartment } from '../utils/rolePermissions';
 
 const NotificationsScreen = ({ navigation }: any) => {
   const { colors: themeColors } = useTheme();
@@ -36,8 +37,7 @@ const NotificationsScreen = ({ navigation }: any) => {
 
   // Check if user has permission
   useEffect(() => {
-    const isAdminOrMedia = user?.role === 'admin' || user?.role === 'media' || user?.role === 'media_head' ||
-      (user?.departments && user.departments.some((d: string) => d.toLowerCase() === 'media'));
+    const isAdminOrMedia = hasLeadershipAccess(user?.role) || hasMediaDepartment(user?.departments as any);
     if (!isAdminOrMedia) {
       Alert.alert(
         'Access Denied',
@@ -103,10 +103,10 @@ const NotificationsScreen = ({ navigation }: any) => {
     let message = `Dear Beloved in Christ,\n\n`;
     message += `Grace and peace to you from God our Father and the Lord Jesus Christ.\n\n`;
     message += `This is to inform you about:\n`;
-    message += `ðŸ“Œ ${title.toUpperCase()}\n\n`;
+    message += `${title.toUpperCase()}\n\n`;
     
     message += `DETAILS:\n`;
-    message += `â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n`;
+    message += `----------------------\n`;
     
     if (serviceType && serviceType !== 'Other') {
       message += `Service: ${serviceType}\n`;
@@ -122,7 +122,7 @@ const NotificationsScreen = ({ navigation }: any) => {
     
     message += `Time: ${time}\n`;
     message += `Venue: ${location}\n`;
-    message += `â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”\n\n`;
+    message += `----------------------\n\n`;
     
     message += `Your presence and participation will be highly valued as we gather together in fellowship and worship.\n\n`;
     message += `"For where two or three gather in my name, there am I with them." - Matthew 18:20\n\n`;
@@ -356,11 +356,11 @@ const NotificationsScreen = ({ navigation }: any) => {
         </View>
 
         <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>ðŸ“¬ Delivery Info</Text>
-          <Text style={styles.infoText}>â€¢ Emails sent to all members with email addresses</Text>
-          <Text style={styles.infoText}>â€¢ SMS sent to Nigerian phone numbers (+234)</Text>
-          <Text style={styles.infoText}>â€¢ Failed deliveries are queued for retry</Text>
-          <Text style={styles.infoText}>â€¢ Check notification queue for delivery status</Text>
+          <Text style={styles.infoTitle}>Delivery Info</Text>
+          <Text style={styles.infoText}>- Emails sent to all members with email addresses</Text>
+          <Text style={styles.infoText}>- SMS sent to Nigerian phone numbers (+234)</Text>
+          <Text style={styles.infoText}>- Failed deliveries are queued for retry</Text>
+          <Text style={styles.infoText}>- Check notification queue for delivery status</Text>
         </View>
 
         <TouchableOpacity
@@ -387,7 +387,7 @@ const NotificationsScreen = ({ navigation }: any) => {
           style={styles.linkButton}
           onPress={() => navigation.navigate('NotificationQueue')}
         >
-          <Text style={styles.linkButtonText}>View Notification Queue â†’</Text>
+          <Text style={styles.linkButtonText}>View Notification Queue {'->'}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

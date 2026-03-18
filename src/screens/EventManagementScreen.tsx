@@ -20,6 +20,7 @@ import { Event } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
+import { hasLeadershipAccess, hasMediaDepartment } from '../utils/rolePermissions';
 
 export default function EventManagementScreen({ navigation }: any) {
   const { colors: themeColors } = useTheme();
@@ -44,13 +45,7 @@ export default function EventManagementScreen({ navigation }: any) {
   });
 
   // Check if user has permission
-  const hasPermission = user?.role === 'admin' || 
-    user?.role === 'media' || 
-    user?.role === 'media_head' ||
-    (user?.departments && user.departments.some((dept: any) => {
-      const deptName = typeof dept === 'string' ? dept : dept.name || '';
-      return deptName.toLowerCase().includes('media');
-    }));
+  const hasPermission = hasLeadershipAccess(user?.role) || hasMediaDepartment(user?.departments as any);
 
   useEffect(() => {
     if (!hasPermission) {

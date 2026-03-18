@@ -34,6 +34,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('AuthContext: Found stored user');
         const userData = JSON.parse(storedUser);
         setUser(userData);
+        
+        // Verify token is still valid by making a test request
+        try {
+          await authService.verifyToken();
+          console.log('AuthContext: Token is valid');
+        } catch (error) {
+          console.log('AuthContext: Token invalid, logging out');
+          // Token is invalid, clear stored data
+          await AsyncStorage.removeItem('token');
+          await AsyncStorage.removeItem('user');
+          setUser(null);
+        }
       } else {
         console.log('AuthContext: No stored user found');
       }

@@ -47,6 +47,16 @@ export const authService = {
     return response.data;
   },
 
+  // Verify if token is still valid
+  verifyToken: async (): Promise<boolean> => {
+    try {
+      await api.get('/auth/profile');
+      return true;
+    } catch (error) {
+      return false;
+    }
+  },
+
   // Update user profile
   updateProfile: async (data: Partial<User>): Promise<User> => {
     const response = await api.put('/auth/profile', data);

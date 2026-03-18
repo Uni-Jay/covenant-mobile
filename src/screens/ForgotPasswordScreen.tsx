@@ -14,8 +14,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import axios from 'axios';
+import { getApiUrl } from '../config/network.config';
 
-const API_URL = 'http://192.168.8.183:5000/api';
+const API_URL = getApiUrl();
 
 export default function ForgotPasswordScreen({ navigation }: any) {
   const { colors } = useTheme();
@@ -116,7 +117,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
         {/* Logo */}
         <View style={styles.logoContainer}>
           <Image
-            source={require('../../assets/logo.png')}
+            source={require('../../assets/images/New_Logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />

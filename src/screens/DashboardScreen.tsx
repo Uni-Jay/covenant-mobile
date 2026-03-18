@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Dimensions
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { dashboardService } from '../services';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -63,25 +64,25 @@ const DashboardScreen = ({ navigation }: any) => {
   );
 
   const renderActivityItem = (item: any, index: number) => {
-    const getActivityIcon = (type: string) => {
+    const getActivityIcon = (type: string): keyof typeof Ionicons.glyphMap => {
       switch (type) {
-        case 'registration': return 'ðŸ‘¤';
-        case 'first_timer': return 'ðŸŽ‰';
-        case 'post': return 'ðŸ“';
-        case 'prayer': return 'ðŸ™';
-        case 'donation': return 'ðŸ’°';
-        default: return 'â€¢';
+        case 'registration': return 'person-outline';
+        case 'first_timer': return 'sparkles-outline';
+        case 'post': return 'document-text-outline';
+        case 'prayer': return 'heart-outline';
+        case 'donation': return 'cash-outline';
+        default: return 'ellipse-outline';
       }
     };
 
     return (
       <View key={index} style={styles.activityItem}>
-        <Text style={styles.activityIcon}>{getActivityIcon(item.activity_type)}</Text>
+        <Ionicons name={getActivityIcon(item.activity_type)} size={18} color={themeColors.primary[700]} />
         <View style={styles.activityContent}>
           <Text style={styles.activityText}>{item.name}</Text>
           {item.activity_type === 'donation' && (
             <Text style={styles.activitySubtext}>
-              â‚¦{item.amount?.toLocaleString()} - {item.donation_type}
+              NGN {item.amount?.toLocaleString()} - {item.donation_type}
             </Text>
           )}
           {item.activity_type === 'first_timer' && (
@@ -109,7 +110,7 @@ const DashboardScreen = ({ navigation }: any) => {
   if (error) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.errorText}>âš ï¸ {error}</Text>
+        <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchDashboardData}>
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
@@ -143,7 +144,7 @@ const DashboardScreen = ({ navigation }: any) => {
             'First-Timers',
             stats?.firstTimers?.active || 0,
             `${stats?.firstTimers?.convertedThisMonth || 0} converted this month`,
-            colors.accent
+            colors.accent[600]
           )}
           {renderStatCard(
             'Attendance',
@@ -172,7 +173,7 @@ const DashboardScreen = ({ navigation }: any) => {
           )}
           {renderStatCard(
             'Donations',
-            `â‚¦${(stats?.donations?.totalThisMonth || 0).toLocaleString()}`,
+            `NGN ${(stats?.donations?.totalThisMonth || 0).toLocaleString()}`,
             'Total giving',
             '#10B981'
           )}
@@ -180,7 +181,7 @@ const DashboardScreen = ({ navigation }: any) => {
             'Posts',
             stats?.community?.postsThisMonth || 0,
             'Community posts',
-            colors.accent
+            colors.accent[600]
           )}
           {renderStatCard(
             'Events',
@@ -199,28 +200,28 @@ const DashboardScreen = ({ navigation }: any) => {
             style={[styles.actionButton, { backgroundColor: primaryColor }]}
             onPress={() => navigation.navigate('Events')}
           >
-            <Text style={styles.actionIcon}>ðŸ“…</Text>
+            <Ionicons name="calendar-outline" size={18} color="#FFFFFF" />
             <Text style={styles.actionText}>Manage Events</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.accent }]}
+            style={[styles.actionButton, { backgroundColor: colors.accent[600] }]}
             onPress={() => navigation.navigate('FirstTimers')}
           >
-            <Text style={styles.actionIcon}>ðŸŽ‰</Text>
+            <Ionicons name="people-outline" size={18} color="#FFFFFF" />
             <Text style={styles.actionText}>First-Timers</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: '#10B981' }]}
             onPress={() => navigation.navigate('Attendance')}
           >
-            <Text style={styles.actionIcon}>âœ…</Text>
+            <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
             <Text style={styles.actionText}>Attendance</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: '#8B5CF6' }]}
             onPress={() => navigation.navigate('Notifications')}
           >
-            <Text style={styles.actionIcon}>ðŸ“§</Text>
+            <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
             <Text style={styles.actionText}>Send Alerts</Text>
           </TouchableOpacity>
         </View>
@@ -245,29 +246,29 @@ const DashboardScreen = ({ navigation }: any) => {
           style={styles.reportButton}
           onPress={() => navigation.navigate('AttendanceReport')}
         >
-          <Text style={styles.reportButtonText}>ðŸ“Š Attendance Report</Text>
-          <Text style={styles.reportArrow}>â†’</Text>
+          <Text style={styles.reportButtonText}>Attendance Report</Text>
+          <Text style={styles.reportArrow}>{'>'}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.reportButton}
           onPress={() => navigation.navigate('GivingReport')}
         >
-          <Text style={styles.reportButtonText}>ðŸ’° Giving Report</Text>
-          <Text style={styles.reportArrow}>â†’</Text>
+          <Text style={styles.reportButtonText}>Giving Report</Text>
+          <Text style={styles.reportArrow}>{'>'}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.reportButton}
           onPress={() => navigation.navigate('EventsReport')}
         >
-          <Text style={styles.reportButtonText}>ðŸ“… Events Report</Text>
-          <Text style={styles.reportArrow}>â†’</Text>
+          <Text style={styles.reportButtonText}>Events Report</Text>
+          <Text style={styles.reportArrow}>{'>'}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.reportButton}
           onPress={() => navigation.navigate('GrowthReport')}
         >
-          <Text style={styles.reportButtonText}>ðŸ“ˆ Growth Metrics</Text>
-          <Text style={styles.reportArrow}>â†’</Text>
+          <Text style={styles.reportButtonText}>Growth Metrics</Text>
+          <Text style={styles.reportArrow}>{'>'}</Text>
         </TouchableOpacity>
       </View>
 

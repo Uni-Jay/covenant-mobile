@@ -1,19 +1,8 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
 import { getApiUrl } from '../config/network.config';
 
-// Update network.config.ts with your computer's IP address (run: ipconfig)
-const getApiBaseUrl = () => {
-  if (__DEV__) {
-    // Use the IP from network.config.ts for WiFi connection
-    return getApiUrl();
-  }
-  // Production URL (update when deploying)
-  return 'https://your-server-url.onrender.com/api';
-};
-
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = getApiUrl();
 
 const api = axios.create({
   baseURL: API_BASE_URL,

@@ -123,10 +123,10 @@ const EventsReportScreen = ({ navigation }: any) => {
 
                   <View style={styles.eventDetails}>
                     <Text style={styles.eventDate}>
-                      ðŸ“… {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
+                      Date: {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
                     </Text>
                     {event.location && (
-                      <Text style={styles.eventLocation}>ðŸ“ {event.location}</Text>
+                      <Text style={styles.eventLocation}>Location: {event.location}</Text>
                     )}
                   </View>
 
@@ -143,7 +143,7 @@ const EventsReportScreen = ({ navigation }: any) => {
                     )}
                     {event.registrationFee && (
                       <View style={styles.eventStat}>
-                        <Text style={styles.eventStatValue}>â‚¦{event.registrationFee}</Text>
+                        <Text style={styles.eventStatValue}>NGN {event.registrationFee}</Text>
                         <Text style={styles.eventStatLabel}>Fee</Text>
                       </View>
                     )}
@@ -180,7 +180,7 @@ const EventsReportScreen = ({ navigation }: any) => {
 
                   <View style={styles.eventDetails}>
                     <Text style={styles.eventDate}>
-                      ðŸ“… {new Date(event.startDate).toLocaleDateString()}
+                      Date: {new Date(event.startDate).toLocaleDateString()}
                     </Text>
                   </View>
 

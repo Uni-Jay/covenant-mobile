@@ -1229,7 +1229,8 @@ const ChatRoomScreenEnhanced = () => {
                 onPress={() => {
                   const fullUrl = item.fileUrl!.startsWith('http')
                     ? item.fileUrl! : `${getServerUrl()}${item.fileUrl}`;
-                  Linking.openURL(fullUrl);
+                  // Navigate to video player instead of opening in browser
+                  (navigation as any).navigate('VideoPlayer', { videoUrl: fullUrl });
                 }}
               >
                 <Video

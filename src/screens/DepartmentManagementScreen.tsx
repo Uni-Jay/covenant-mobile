@@ -47,12 +47,12 @@ interface DepartmentPosition {
 const DEPARTMENTS = [
   { name: 'Church Leadership', icon: 'â›ª', color: '#8B4513' },
   { name: 'Youth', icon: 'âš¡', color: '#6C5CE7' },
-  { name: 'Drama', icon: 'ðŸŽ­', color: '#4ECDC4' },
-  { name: 'Covenant Men', icon: 'ðŸ‘”', color: '#2C3E50' },
-  { name: 'Prayer', icon: 'ðŸ™', color: '#A29BFE' },
-  { name: 'Media', icon: 'ðŸ“¹', color: '#45B7D1' },
-  { name: 'Goodwomen', icon: 'ðŸ‘—', color: '#E84393' },
-  { name: 'Choir', icon: 'ðŸŽµ', color: '#FF6B6B' },
+  { name: 'Drama', icon: 'theater-outline', color: '#4ECDC4' },
+  { name: 'Covenant Men', icon: 'people-outline', color: '#2C3E50' },
+  { name: 'Prayer', icon: 'hand-left-outline', color: '#A29BFE' },
+  { name: 'Media', icon: 'videocam-outline', color: '#45B7D1' },
+  { name: 'Goodwomen', icon: 'heart-outline', color: '#E84393' },
+  { name: 'Choir', icon: 'musical-notes-outline', color: '#FF6B6B' },
   { name: 'Welfare', icon: 'â¤ï¸', color: '#FD79A8' },
 ];
 
@@ -293,7 +293,7 @@ const DepartmentManagementScreen = ({ navigation }: any) => {
           style={styles.removeButton}
           onPress={() => handleRemoveExecutive(executive)}
         >
-          <Text style={styles.removeButtonText}>âœ•</Text>
+          <Text style={styles.removeButtonText}>✕</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -410,7 +410,7 @@ const DepartmentManagementScreen = ({ navigation }: any) => {
                 setShowAddModal(false);
                 resetForm();
               }}>
-                <Text style={styles.modalClose}>âœ•</Text>
+                <Text style={styles.modalClose}>✕</Text>
               </TouchableOpacity>
             </View>
 

@@ -244,7 +244,7 @@ const VideoCallScreen = () => {
               colors={['rgba(30,58,138,0.9)', 'rgba(59,130,246,0.9)']}
               style={styles.localVideo}
             >
-              <Text style={styles.videoOffIcon}>ðŸ“·</Text>
+              <Text style={styles.videoOffIcon}>📷</Text>
             </LinearGradient>
           )}
         </View>
@@ -266,13 +266,13 @@ const VideoCallScreen = () => {
               <View style={styles.statusIndicators}>
                 <View style={[styles.networkBadge, styles[`network_${networkQuality}`]]}>
                   <Text style={styles.networkIcon}>
-                    {networkQuality === 'excellent' ? 'ðŸ“¶' : networkQuality === 'good' ? 'ðŸ“¶' : networkQuality === 'poor' ? 'ðŸ“µ' : 'âš ï¸'}
+                    {networkQuality === 'excellent' ? '📶' : networkQuality === 'good' ? '📶' : networkQuality === 'poor' ? '📵' : '⚠️'}
                   </Text>
                   <Text style={styles.networkText}>{networkQuality}</Text>
                 </View>
                 {participants.length > 0 && (
                   <View style={styles.participantBadge}>
-                    <Text style={styles.participantIcon}>ðŸ‘¥</Text>
+                    <Text style={styles.participantIcon}>👥</Text>
                     <Text style={styles.participantText}>{participants.length + 1}</Text>
                   </View>
                 )}
@@ -341,7 +341,7 @@ const VideoCallScreen = () => {
                 colors={['#dc2626', '#991b1b']}
                 style={styles.endCallGradient}
               >
-                <Text style={styles.endCallIcon}>ðŸ“ž</Text>
+                <Text style={styles.endCallIcon}>📞</Text>
               </LinearGradient>
               <Text style={styles.controlLabel}>End Call</Text>
             </TouchableOpacity>

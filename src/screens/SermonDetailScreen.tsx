@@ -170,7 +170,6 @@ export default function SermonDetailScreen({ route, navigation }: any) {
     }
   };
 
-  const handleDownloadPDF = () => {
   const handleDownloadPDF = async () => {
     if (!sermon?.pdfUrl) return;
     try {

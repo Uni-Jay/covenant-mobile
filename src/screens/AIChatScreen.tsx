@@ -39,7 +39,7 @@ const AIChatScreen = ({ navigation }: any) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "âœ¨ Welcome! I'm your Advanced AI Assistant powered by cutting-edge technology.\n\nðŸŒŸ I can help you with:\n\nðŸ“– Biblical Analysis\nâ€¢ Explain passages in Greek, Hebrew & Aramaic\nâ€¢ Theological discussions & interpretations\nâ€¢ Historical & cultural context\n\nðŸŽ¨ Creative Generation\nâ€¢ Generate stunning images\nâ€¢ Create video concepts\nâ€¢ Visual illustrations\n\nðŸ’¡ Knowledge & Assistance\nâ€¢ Answer any question\nâ€¢ App navigation help\nâ€¢ Sermon preparation\nâ€¢ Study materials\n\nðŸš€ Just ask me anything - I'm here to help!",
+      text: "Advanced AI Assistant" + "\n\nI can help you with:\n" + "\n- Biblical Analysis\n" + "• Explain passages in Greek, Hebrew & Aramaic\n" + "• Theological discussions & interpretations\n" + "• Historical & cultural context\n" + "\n- Creative Generation\n" + "• Generate stunning images\n" + "• Create video concepts\n" + "• Visual illustrations\n" + "\n- Knowledge & Assistance\n" + "• Answer any question\n" + "• App navigation help\n" + "• Sermon preparation\n" + "• Study materials\n" + "\nJust ask me anything - I'm here to help!",
       sender: 'ai',
       timestamp: new Date(),
       type: 'text',
@@ -160,7 +160,7 @@ const AIChatScreen = ({ navigation }: any) => {
               colors={['#667eea', '#764ba2']}
               style={styles.avatarGradient}
             >
-              <Text style={styles.avatarText}>ðŸ¤–</Text>
+              <Text style={styles.avatarText}>AI</Text>
             </LinearGradient>
           </Animated.View>
           <View style={styles.messageBubble}>
@@ -189,7 +189,7 @@ const AIChatScreen = ({ navigation }: any) => {
               colors={['#667eea', '#764ba2']}
               style={styles.avatarGradient}
             >
-              <Text style={styles.avatarText}>ðŸ¤–</Text>
+              <Text style={styles.avatarText}>AI</Text>
             </LinearGradient>
           </View>
         )}
@@ -233,7 +233,7 @@ const AIChatScreen = ({ navigation }: any) => {
               {message.videoUrl && (
                 <View style={styles.mediaContainer}>
                   <View style={styles.videoPlaceholder}>
-                    <Text style={styles.videoIcon}>â–¶ï¸</Text>
+                    <Text style={styles.videoIcon}>▶</Text>
                     <Text style={styles.videoText}>Video generated</Text>
                   </View>
                 </View>
@@ -253,7 +253,7 @@ const AIChatScreen = ({ navigation }: any) => {
               colors={['#10b981', '#059669']}
               style={styles.avatarGradient}
             >
-              <Text style={styles.avatarText}>ðŸ‘¤</Text>
+              <Text style={styles.avatarText}>U</Text>
             </LinearGradient>
           </View>
         )}
@@ -270,10 +270,10 @@ const AIChatScreen = ({ navigation }: any) => {
         style={styles.header}
       >
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>â†</Text>
+          <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>âœ¨ AI Assistant</Text>
+          <Text style={styles.headerTitle}>AI Assistant</Text>
           <Text style={styles.headerSubtitle}>Powered by Advanced AI</Text>
         </View>
         <View style={styles.headerRight}>

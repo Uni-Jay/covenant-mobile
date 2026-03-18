@@ -185,18 +185,20 @@ const ChurchDocumentsScreen = () => {
         return;
       }
 
-      // Get the local asset and ensure it's downloaded
+      // Get the local asset URI directly without using deprecated downloadAsync
       const assetModule = require('../../assets/images/Church_letterhead.jpeg');
       const asset = Asset.fromModule(assetModule);
       
-      // Download the asset if not already cached
-      if (!asset.downloaded) {
-        await asset.downloadAsync();
+      // Get the URI - use localUri if available, otherwise use uri
+      const assetUri = asset.localUri || asset.uri;
+      
+      if (!assetUri) {
+        throw new Error('Could not load letterhead asset');
       }
 
       // Share the file
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(asset.localUri || asset.uri, {
+        await Sharing.shareAsync(assetUri, {
           mimeType: 'image/jpeg',
           dialogTitle: `${selectedLetterhead.charAt(0).toUpperCase() + selectedLetterhead.slice(1)} Letterhead`,
         });

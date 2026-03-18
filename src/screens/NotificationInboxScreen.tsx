@@ -16,6 +16,8 @@ import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 import api from '../services/api';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { hasLeadershipAccess, hasMediaDepartment } from '../utils/rolePermissions';
 
 interface Notification {
   id: number;
@@ -37,8 +39,7 @@ const NotificationInboxScreen = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const isAdminOrMedia = user?.role === 'admin' || user?.role === 'media' || user?.role === 'media_head' ||
-    (user?.departments && user.departments.some((d: string) => d.toLowerCase() === 'media'));
+  const isAdminOrMedia = hasLeadershipAccess(user?.role) || hasMediaDepartment(user?.departments as any);
 
   useEffect(() => {
     loadNotifications();
@@ -131,20 +132,20 @@ const NotificationInboxScreen = () => {
     return date.toLocaleDateString();
   };
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationIcon = (type: string): keyof typeof Ionicons.glyphMap => {
     switch (type) {
       case 'email':
-        return 'ðŸ“§';
+        return 'mail-outline';
       case 'sms':
-        return 'ðŸ“±';
+        return 'chatbubble-ellipses-outline';
       case 'event':
-        return 'ðŸ“…';
+        return 'calendar-outline';
       case 'announcement':
-        return 'ðŸ“¢';
+        return 'megaphone-outline';
       case 'prayer':
-        return 'ðŸ™';
+        return 'heart-outline';
       default:
-        return 'ðŸ””';
+        return 'notifications-outline';
     }
   };
 
@@ -161,7 +162,7 @@ const NotificationInboxScreen = () => {
     >
       <View style={styles.notificationContent}>
         <View style={styles.iconContainer}>
-          <Text style={styles.icon}>{getNotificationIcon(item.type)}</Text>
+          <Ionicons name={getNotificationIcon(item.type)} size={22} color={colors.primary[600]} />
           {!item.is_read && (
             <View style={[styles.unreadDot, { backgroundColor: colors.primary[600] }]} />
           )}
@@ -239,7 +240,7 @@ const NotificationInboxScreen = () => {
             colors={[colors.primary[500], colors.primary[700]]}
             style={styles.sendButtonGradient}
           >
-            <Text style={styles.sendButtonIcon}>ðŸ“¢</Text>
+            <Ionicons name="megaphone-outline" size={18} color="#FFFFFF" />
             <Text style={styles.sendButtonText}>Send Notification</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -251,7 +252,7 @@ const NotificationInboxScreen = () => {
           onPress={handleMarkAllAsRead}
         >
           <Text style={[styles.markAllText, { color: colors.primary[700] }]}>
-            âœ“ Mark all as read
+            Mark all as read
           </Text>
         </TouchableOpacity>
       )}
@@ -269,7 +270,7 @@ const NotificationInboxScreen = () => {
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>ðŸ””</Text>
+            <Ionicons name="notifications-off-outline" size={40} color={colors.textSecondary} />
             <Text style={[styles.emptyText, { color: colors.text }]}>
               No notifications yet
             </Text>

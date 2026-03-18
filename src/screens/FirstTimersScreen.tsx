@@ -51,7 +51,7 @@ const FirstTimersScreen = ({ navigation }: any) => {
 
   const getStatusBadge = (item: any) => {
     if (item.convertedToMember) {
-      return { text: 'Member âœ“', color: '#10B981' };
+      return { text: 'Member', color: '#10B981' };
     } else if (item.sundayServiceCount >= 6) {
       return { text: 'Ready', color: '#F59E0B' };
     } else {
@@ -100,7 +100,7 @@ const FirstTimersScreen = ({ navigation }: any) => {
 
         {item.address && (
           <Text style={styles.cardAddress} numberOfLines={1}>
-            ðŸ“ {item.address}
+            Address: {item.address}
           </Text>
         )}
 

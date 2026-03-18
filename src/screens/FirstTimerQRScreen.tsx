@@ -48,7 +48,7 @@ const FirstTimerQRScreen = ({ navigation }: any) => {
         
         if (result.promoted) {
           Alert.alert(
-            'ðŸŽ‰ Congratulations!',
+            'Congratulations!',
             `${firstTimer.first_name} ${firstTimer.last_name} has been promoted to membership!\n\nUsername: ${result.username}\nTemp Password: ${result.tempPassword}`,
             [
               {
@@ -63,7 +63,7 @@ const FirstTimerQRScreen = ({ navigation }: any) => {
           );
         } else {
           Alert.alert(
-            'âœ… Check-in Successful',
+            'Check-in Successful',
             `${firstTimer.first_name} ${firstTimer.last_name}\n\nAttendance: ${result.attendanceCount}/6\nRemaining to membership: ${result.remainingToMembership}`,
             [
               {

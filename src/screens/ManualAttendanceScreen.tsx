@@ -209,7 +209,7 @@ const ManualAttendanceScreen = ({ navigation }: any) => {
         </View>
 
         <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>ðŸ“ Manual Attendance</Text>
+          <Text style={styles.infoTitle}>Manual Attendance</Text>
           <Text style={styles.infoText}>
             Use this feature to mark attendance for members who couldn't scan QR codes or attended
             without their phones.
@@ -232,7 +232,7 @@ const ManualAttendanceScreen = ({ navigation }: any) => {
           style={styles.linkButton}
           onPress={() => navigation.navigate('AttendanceReport')}
         >
-          <Text style={styles.linkButtonText}>View Attendance Report â†’</Text>
+          <Text style={styles.linkButtonText}>View Attendance Report {'->'}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

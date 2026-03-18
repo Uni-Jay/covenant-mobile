@@ -8,6 +8,7 @@ import { runOnJS } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
+import { hasLeadershipAccess, hasMediaDepartment } from '../utils/rolePermissions';
 
 // Auth Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -23,6 +24,7 @@ import EventManagementScreen from '../screens/EventManagementScreen';
 import SermonsScreen from '../screens/SermonsScreen';
 import SermonDetailScreen from '../screens/SermonDetailScreen';
 import SermonManagementScreen from '../screens/SermonManagementScreen';
+import VideoPlayerScreen from '../screens/VideoPlayerScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ChatListScreen from '../screens/ChatListScreen';
 import ChatRoomScreen from '../screens/ChatRoomScreen';
@@ -251,8 +253,7 @@ function MainTabs() {
 
 function MainStack() {
   const { user } = useAuth();
-  const isAdminOrMedia = user?.role === 'admin' || user?.role === 'media' || user?.role === 'media_head' ||
-    (user?.departments && user.departments.some((d: string) => d.toLowerCase() === 'media'));
+  const isAdminOrMedia = hasLeadershipAccess(user?.role) || hasMediaDepartment(user?.departments as any);
 
   return (
     <Stack.Navigator
@@ -276,6 +277,7 @@ function MainStack() {
       <Stack.Screen name="EventManagement" component={EventManagementScreen} options={{ title: 'Manage Events' }} />
       <Stack.Screen name="SermonDetail" component={SermonDetailScreen} options={{ headerShown: false }} />
       <Stack.Screen name="SermonManagement" component={SermonManagementScreen} options={{ title: 'Manage Sermons' }} />
+      <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Prayer" component={PrayerScreen} options={{ title: 'Prayer Request' }} />
       <Stack.Screen name="Give" component={GiveScreen} options={{ title: 'Give' }} />
       <Stack.Screen name="DonationApproval" component={DonationApprovalScreen} options={{ title: 'Approve Donations' }} />

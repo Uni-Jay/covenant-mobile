@@ -50,7 +50,7 @@ const FirstTimerRegisterScreen = ({ route, navigation }: any) => {
       );
 
       Alert.alert(
-        'ðŸŽ‰ Welcome!',
+        'Welcome!',
         `${result.message}\n\nYou need ${result.remainingToMembership} more Sunday attendances to become a member.`,
         [
           {
@@ -130,11 +130,11 @@ const FirstTimerRegisterScreen = ({ route, navigation }: any) => {
         </View>
 
         <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>ðŸ“‹ What happens next?</Text>
-          <Text style={styles.infoText}>â€¢ Your attendance is automatically recorded</Text>
-          <Text style={styles.infoText}>â€¢ Attend 6 Sunday services to become a member</Text>
-          <Text style={styles.infoText}>â€¢ You'll receive membership credentials automatically</Text>
-          <Text style={styles.infoText}>â€¢ We'll keep you updated on church events</Text>
+          <Text style={styles.infoTitle}>What happens next?</Text>
+          <Text style={styles.infoText}>- Your attendance is automatically recorded</Text>
+          <Text style={styles.infoText}>- Attend 6 Sunday services to become a member</Text>
+          <Text style={styles.infoText}>- You'll receive membership credentials automatically</Text>
+          <Text style={styles.infoText}>- We'll keep you updated on church events</Text>
         </View>
 
         <TouchableOpacity

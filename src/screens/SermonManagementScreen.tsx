@@ -23,6 +23,7 @@ import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 import api from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { hasLeadershipAccess, hasMediaDepartment } from '../utils/rolePermissions';
 
 export default function SermonManagementScreen({ navigation }: any) {
   const { colors: themeColors } = useTheme();
@@ -58,13 +59,7 @@ export default function SermonManagementScreen({ navigation }: any) {
   }>({});
 
   // Check if user has permission
-  const hasPermission = user?.role === 'admin' || 
-    user?.role === 'media' || 
-    user?.role === 'media_head' ||
-    (user?.departments && user.departments.some((dept: any) => {
-      const deptName = typeof dept === 'string' ? dept : dept.name || '';
-      return deptName.toLowerCase().includes('media');
-    }));
+  const hasPermission = hasLeadershipAccess(user?.role) || hasMediaDepartment(user?.departments as any);
 
   useEffect(() => {
     if (!hasPermission) {

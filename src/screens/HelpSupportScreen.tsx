@@ -12,9 +12,12 @@ import {
   TextInput,
 } from 'react-native';
 import { colors } from '../theme/colors';
+import { contactService } from '../services';
+import { useAuth } from '../context/AuthContext';
 
 export default function HelpSupportScreen({ navigation }: any) {
   const { colors: themeColors } = useTheme();
+  const { user } = useAuth();
   const styles = createStyles(themeColors);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [message, setMessage] = useState('');
@@ -105,15 +108,27 @@ export default function HelpSupportScreen({ navigation }: any) {
       action: () => Linking.openURL('tel:+234XXXXXXXXXX'),
     },
     {
-      title: 'Email Us',
+      title: 'General Info',
       icon: '✉️',
-      subtitle: 'info@wordofcovenant.org',
-      action: () => Linking.openURL('mailto:info@wordofcovenant.org'),
+      subtitle: 'info@hocfam.org',
+      action: () => Linking.openURL('mailto:info@hocfam.org'),
+    },
+    {
+      title: 'Support Email',
+      icon: '🛠️',
+      subtitle: 'support@hocfam.org',
+      action: () => Linking.openURL('mailto:support@hocfam.org'),
+    },
+    {
+      title: 'Media Email',
+      icon: '🎥',
+      subtitle: 'media@hocfam.org',
+      action: () => Linking.openURL('mailto:media@hocfam.org'),
     },
     {
       title: 'Visit Our Website',
       icon: '🌐',
-      subtitle: 'www.wordofcovenant.org',
+      subtitle: 'www.hocfam.org',
       action: () => Linking.openURL('http://localhost:5173'),
     },
     {
@@ -131,10 +146,21 @@ export default function HelpSupportScreen({ navigation }: any) {
       return;
     }
 
+    if (!user?.email) {
+      Alert.alert('Error', 'Please update your profile with a valid email before sending support messages.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // TODO: Implement API call to submit support message
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await contactService.submit({
+        name: user.fullName || 'Mobile App User',
+        email: user.email,
+        phone: user.phone || '',
+        category: 'support',
+        subject: 'Mobile App Support Request',
+        message,
+      });
       Alert.alert('Success', 'Your message has been sent. We will get back to you soon.');
       setMessage('');
     } catch (error) {

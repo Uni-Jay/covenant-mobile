@@ -15,37 +15,12 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { colors } from '../theme/colors';
 import { getServerUrl } from '../config/network.config';
-
-const isSuperAdmin = (user: any) => {
-  if (!user) return false;
-  
-  // Anyone with Media department gets super admin access
-  if (user.departments && Array.isArray(user.departments)) {
-    return user.departments.some((dept: any) => {
-      // Handle both string and object formats
-      const deptName = (typeof dept === 'string' ? dept : dept?.name || '').toLowerCase().trim();
-      const hasMedia = deptName.includes('media');
-      return hasMedia;
-    });
-  }
-  
-  return false;
-};
-
-const isMediaOrAdmin = (user: any) => {
-  if (!user) return false;
-  
-  // Anyone with Media department has full access
-  if (isSuperAdmin(user)) return true;
-  
-  const role = user.role?.toLowerCase();
-  
-  return (
-    role === 'admin' ||
-    role === 'super_admin' ||
-    role === 'media_head'
-  );
-};
+import {
+  hasExecutiveAccess,
+  hasLeadershipAccess,
+  hasMediaDepartment,
+  hasMediaOrPrayerDepartment,
+} from '../utils/rolePermissions';
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
@@ -66,8 +41,8 @@ export default function ProfileScreen() {
         departmentsArray: deptNames,
         departmentsIsArray: Array.isArray(user.departments),
         departmentsLength: deptArray.length,
-        hasMediaDept: isSuperAdmin(user),
-        isMediaOrAdmin: isMediaOrAdmin(user)
+        hasMediaDept: hasMediaDepartment(user.departments as any),
+        isMediaOrAdmin: hasLeadershipAccess(user.role)
       });
     }
   }, [user]);
@@ -118,7 +93,7 @@ export default function ProfileScreen() {
     { iconLib: 'MaterialIcons', iconName: 'business', title: 'Department Management', route: 'DepartmentManagement', requiresAdmin: true },
     { iconLib: 'MaterialCommunityIcons', iconName: 'account-group', title: 'User Management', route: 'UserManagement', requiresAdmin: true },
     { iconLib: 'MaterialCommunityIcons', iconName: 'calendar-check', title: 'My Events', route: 'MyEvents', requiresAdmin: true },
-    { iconLib: 'Ionicons', iconName: 'prism-outline', title: 'My Prayer Requests', route: 'MyPrayers', requiresAdmin: false },
+    { iconLib: 'Ionicons', iconName: 'flower-outline', title: 'My Prayer Requests', route: 'MyPrayers', requiresAdmin: false },
     { iconLib: 'MaterialCommunityIcons', iconName: 'clipboard-list-outline', title: 'Attendance Report', route: 'AttendanceReport', requiresAdmin: true },
     { iconLib: 'MaterialCommunityIcons', iconName: 'qrcode', title: 'Generate QR Code', route: 'GenerateAttendanceQR', requiresAdmin: true },
     { iconLib: 'MaterialCommunityIcons', iconName: 'clipboard-edit-outline', title: 'Manual Attendance', route: 'ManualAttendance', requiresAdmin: true },
@@ -134,16 +109,13 @@ export default function ProfileScreen() {
     if (!user) return false;
     
     // Check role
-    if (user.role && ['super_admin', 'admin', 'media_head', 'media'].includes(user.role)) {
+    if (hasLeadershipAccess(user.role)) {
       return true;
     }
     
     // Check departments (case-insensitive, trimmed)
-    if (user.departments && Array.isArray(user.departments)) {
-      return user.departments.some((dept: any) => {
-        const deptName = (typeof dept === 'string' ? dept : dept?.name || '').toLowerCase().trim();
-        return deptName.includes('media') || deptName.includes('prayer');
-      });
+    if (Array.isArray(user.departments)) {
+      return hasMediaOrPrayerDepartment(user.departments as any);
     }
     
     return false;
@@ -156,12 +128,12 @@ export default function ProfileScreen() {
     
     // Admin-only items
     if (item.requiresAdmin && !item.requiresAdminOrMedia) {
-      return isMediaOrAdmin(user);
+      return hasLeadershipAccess(user?.role) || hasMediaDepartment(user?.departments as any);
     }
     
     // Admin or Media department items
     if (item.requiresAdminOrMedia) {
-      return isMediaOrAdmin(user) || isMediaOrPrayerMember;
+      return hasLeadershipAccess(user?.role) || isMediaOrPrayerMember;
     }
     
     return false;
