@@ -1,24 +1,32 @@
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import api from './api';
 
 const GOOGLE_WEB_CLIENT_ID = '538314378005-7sqems09ocusr7qefn065nkbq7lfarv7.apps.googleusercontent.com';
 
-// Configure Google Sign-In
-try {
-  GoogleSignin.configure({
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-    offlineAccess: true,
-    forceCodeForRefreshToken: true,
-    scopes: ['profile', 'email'],
-  });
-} catch (error) {
-  console.error('Failed to configure Google Sign-In:', error);
+// Only configure Google Sign-In on native platforms
+if (Platform.OS !== 'web') {
+  try {
+    GoogleSignin.configure({
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+      offlineAccess: true,
+      forceCodeForRefreshToken: true,
+      scopes: ['profile', 'email'],
+    });
+  } catch (error) {
+    console.error('Failed to configure Google Sign-In:', error);
+  }
 }
 
 export const googleAuthService = {
   // Initialize Google Play Services
   initGoogleServices: async () => {
+    // Skip on web platform
+    if (Platform.OS === 'web') {
+      console.warn('Google Sign-In not supported on web platform');
+      return false;
+    }
+
     try {
       await GoogleSignin.hasPlayServices();
       return true;
@@ -27,7 +35,7 @@ export const googleAuthService = {
       if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         Alert.alert(
           'Google Play Services Unavailable',
-          'This device does not have Google Play Services installed or enabled.',
+          'This device does not have Google Play Services installed or enabled. Please install it from the Play Store.',
           [{ text: 'OK' }]
         );
       }
@@ -38,7 +46,12 @@ export const googleAuthService = {
   // Sign in with Google
   signIn: async () => {
     try {
-      // First check if Play Services are available
+      // Check platform - web is not supported
+      if (Platform.OS === 'web') {
+        throw new Error('Google Sign-In is not available on web platform. Please use email/password login instead.');
+      }
+
+      // Check if Play Services are available
       await GoogleSignin.hasPlayServices();
       
       // Sign in
@@ -76,6 +89,11 @@ export const googleAuthService = {
       return response.data;
     } catch (error: any) {
       console.error('Google Sign-In Error:', error);
+
+      // Handle platform-specific errors
+      if (Platform.OS === 'web') {
+        throw new Error('Google Sign-In is only available on Android and iOS apps. Use email/password to login on web.');
+      }
       
       // Handle specific error codes
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -83,9 +101,9 @@ export const googleAuthService = {
       } else if (error.code === statusCodes.IN_PROGRESS) {
         throw new Error('Sign in already in progress');
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        throw new Error('Google Play Services not available on this device');
+        throw new Error('Google Play Services not available. Please install from Play Store.');
       } else if (error.code === 'DEVELOPER_ERROR') {
-        throw new Error('Developer error: Check Google Cloud Console configuration.\n\n✓ Package name: com.wordofcovenant.app\n✓ Signing certificate SHA-1\n✓ OAuth consent screen\n✓ webClientId matches project');
+        throw new Error('Setup Error: Verify app package (com.wordofcovenant.app) and signing key in Google Console');
       } else if (error.response?.status === 401) {
         throw new Error('Authentication failed with Google');
       } else {
@@ -96,6 +114,7 @@ export const googleAuthService = {
 
   signOut: async () => {
     try {
+      if (Platform.OS === 'web') return;
       await GoogleSignin.signOut();
       console.log('Google sign out success');
     } catch (error) {
@@ -106,6 +125,7 @@ export const googleAuthService = {
   // Check if signed in
   isSignedIn: async () => {
     try {
+      if (Platform.OS === 'web') return false;
       return await GoogleSignin.hasPreviousSignIn();
     } catch (error) {
       return false;

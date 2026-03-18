@@ -55,7 +55,18 @@ export default function LoginScreen({ navigation }: any) {
     } catch (error: any) {
       console.error('Google login error:', error);
       if (error.message !== 'Sign in cancelled') {
-        Alert.alert('Google Sign-In Failed', error.message);
+        let displayMessage = error.message;
+        
+        // Special handling for web platform limitation
+        if (Platform.OS === 'web' || error.message?.includes('not available on web')) {
+          displayMessage = 'Google Sign-In is not available on web/Expo Go.\n\n' +
+            'To test Google Sign-In:\n' +
+            '1. Build the app for Android or iOS\n' +
+            '2. Run on physical device or emulator\n\n' +
+            'For now, use Email/Password login';
+        }
+        
+        Alert.alert('Google Sign-In Failed', displayMessage);
       }
     } finally {
       setIsGoogleLoading(false);
