@@ -36,6 +36,14 @@ export const hasLeadershipAccess = (role?: string): boolean => {
   return ['super_admin', 'admin', 'media_head', 'media'].includes(normalized);
 };
 
+// Special function to check if user can access media screens
+export const canAccessMediaScreens = (role?: string, departments?: DepartmentValue[]): boolean => {
+  // Super admin and admin can access everything
+  if (hasLeadershipAccess(role)) return true;
+  // Check if user is in media department
+  return hasMediaDepartment(departments);
+};
+
 export const hasExecutiveAccess = (role?: string): boolean => {
   if (hasLeadershipAccess(role)) return true;
   const normalized = normalizeRole(role);

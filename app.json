@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/images/New_Logo.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "jsEngine": "hermes",
     "splash": {
       "image": "./assets/images/New_Logo.png",
@@ -15,22 +14,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.wordofcovenant.app",
-      "infoPlist": {
-        "NSMicrophoneUsageDescription": "This app needs access to your microphone to record voice messages.",
-        "NSCameraUsageDescription": "This app needs access to your camera to take photos, videos and scan QR codes.",
-        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to share images and documents.",
-        "ITSAppUsesNonExemptEncryption": false
-      }
+      "bundleIdentifier": "com.wordofcovenant.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1e3a8a"
-      },
-      "splash": {
-        "image": "./assets/images/New_Logo.png",
-        "resizeMode": "contain",
         "backgroundColor": "#1e3a8a"
       },
       "package": "com.wordofcovenant.app",
@@ -39,10 +27,7 @@
         "RECORD_AUDIO",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "INTERNET",
-        "ACCESS_NETWORK_STATE",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "INTERNET"
       ]
     },
     "web": {
@@ -50,31 +35,12 @@
     },
     "scheme": "com.wordofcovenant.app",
     "plugins": [
-      "expo-audio",
-      "expo-system-ui",
-      "@react-native-google-signin/google-signin",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "enableProguardInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true,
-            "minSdkVersion": 21,
-            "ndk": "23.2.8767484"
-          }
-        }
-      ]
+      "expo-audio"
     ],
     "extra": {
       "eas": {
         "projectId": "60c37a03-9ab9-4b4d-aedc-9b759186e197"
       }
-    },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/60c37a03-9ab9-4b4d-aedc-9b759186e197"
     }
   }
 }

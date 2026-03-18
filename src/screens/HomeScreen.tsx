@@ -10,6 +10,8 @@ import {
   Image,
   Dimensions,
   Platform,
+  Alert,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -18,6 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { eventsService, sermonsService } from '../services';
 import { Event, Sermon } from '../types';
 import { getServerUrl } from '../config/network.config';
+import appConfig from '../../app.json';
 
 const { width } = Dimensions.get('window');
 
@@ -33,7 +36,51 @@ export default function HomeScreen() {
 
   useEffect(() => {
     loadDashboardData();
+    checkForUpdates();
   }, []);
+
+  const checkForUpdates = async () => {
+    try {
+      const response = await fetch('https://api.github.com/repos/Uni-Jay/covenant-mobile/releases/latest');
+      const latestRelease = await response.json();
+      
+      if (latestRelease.tag_name) {
+        const latestVersion = latestRelease.tag_name.replace('v', '');
+        const currentVersion = appConfig.expo.version;
+        
+        if (compareVersions(latestVersion, currentVersion) > 0) {
+          Alert.alert(
+            '📱 Update Available',
+            `A new version (${latestVersion}) is available. Download the latest version from our website!`,
+            [
+              { 
+                text: 'Download Now', 
+                onPress: () => Linking.openURL('https://github.com/Uni-Jay/covenant-mobile/releases/latest'),
+                style: 'default'
+              },
+              { text: 'Later', style: 'cancel' }
+            ]
+          );
+        }
+      }
+    } catch (error) {
+      console.log('Update check failed:', error);
+    }
+  };
+
+  const compareVersions = (version1: string, version2: string): number => {
+    const v1parts = version1.split('.').map(Number);
+    const v2parts = version2.split('.').map(Number);
+    
+    for (let i = 0; i < Math.max(v1parts.length, v2parts.length); i++) {
+      const part1 = v1parts[i] || 0;
+      const part2 = v2parts[i] || 0;
+      
+      if (part1 > part2) return 1;
+      if (part1 < part2) return -1;
+    }
+    return 0;
+  };
 
   const loadDashboardData = async () => {
     try {
