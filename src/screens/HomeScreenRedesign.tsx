@@ -19,6 +19,8 @@ import { useAuth } from '../context/AuthContext';
 import { eventsService, sermonsService } from '../services';
 import { primaryColor, accentColor, colors } from '../theme/colors';
 import { Event, Sermon } from '../types';
+import { EMOJI, emojiTextProps } from '../utils/emojiRenderer';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 
 const { width } = Dimensions.get('window');
@@ -72,13 +74,13 @@ export default function HomeScreenRedesign({ navigation }: any) {
   });
 
   const quickActions = [
-    { icon: '📹', label: 'Live Stream', screen: 'LiveStream', color: '#FF6B6B' },
-    { icon: '📖', label: 'Sermons', screen: 'Sermons', color: '#4ECDC4' },
-    { icon: '📅', label: 'Events', screen: 'Events', color: '#45B7D1' },
-    { icon: '🙏', label: 'Pray', screen: 'PrayerRequest', color: '#FFA07A' },
-    { icon: '❤️', label: 'Give', screen: 'Donate', color: '#98D8C8' },
-    { icon: '💬', label: 'Chat', screen: 'ChatList', color: '#A78BFA' },
-    { icon: '📄', label: 'Documents', screen: 'ChurchDocuments', color: '#F59E0B' },
+    { iconName: 'videocam' as const, iconLib: 'MaterialIcons' as const, label: 'Live Stream', screen: 'LiveStream', color: '#FF6B6B' },
+    { iconName: 'book-open' as const, iconLib: 'MaterialCommunityIcons' as const, label: 'Sermons', screen: 'Sermons', color: '#4ECDC4' },
+    { iconName: 'event' as const, iconLib: 'MaterialIcons' as const, label: 'Events', screen: 'Events', color: '#45B7D1' },
+    { iconName: 'hand-palms-up' as const, iconLib: 'MaterialCommunityIcons' as const, label: 'Pray', screen: 'PrayerRequest', color: '#FFA07A' },
+    { iconName: 'favorite' as const, iconLib: 'MaterialIcons' as const, label: 'Give', screen: 'Donate', color: '#98D8C8' },
+    { iconName: 'chat-bubble' as const, iconLib: 'MaterialIcons' as const, label: 'Chat', screen: 'ChatList', color: '#A78BFA' },
+    { iconName: 'file-document' as const, iconLib: 'MaterialCommunityIcons' as const, label: 'Documents', screen: 'ChurchDocuments', color: '#F59E0B' },
   ];
 
   return (
@@ -115,48 +117,54 @@ export default function HomeScreenRedesign({ navigation }: any) {
         {/* Quick Actions Grid */}
         <View style={styles.quickActionsSection}>
           <View style={styles.quickActionsGrid}>
-            {quickActions.map((action, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.quickActionCard}
-                onPress={() => navigation.navigate(action.screen)}
-                activeOpacity={0.7}
-              >
-                <LinearGradient
-                  colors={[action.color, action.color + 'CC']}
-                  style={styles.quickActionGradient}
+            {quickActions.map((action, index) => {
+              const IconComponent = action.iconLib === 'MaterialIcons' ? MaterialIcons : MaterialCommunityIcons;
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.quickActionCard}
+                  onPress={() => navigation.navigate(action.screen)}
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.quickActionIcon}>{action.icon}</Text>
-                </LinearGradient>
-                <Text style={styles.quickActionLabel}>{action.label}</Text>
-              </TouchableOpacity>
-            ))}
+                  <LinearGradient
+                    colors={[action.color, action.color + 'CC']}
+                    style={styles.quickActionGradient}
+                  >
+                    <IconComponent name={action.iconName as any} size={32} color="#fff" />
+                  </LinearGradient>
+                  <Text style={styles.quickActionLabel}>{action.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
         {/* Service Times Card */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionIcon}>⏰</Text>
+            <MaterialIcons name="schedule" size={24} color="#F59E0B" />
             <Text style={styles.sectionTitle}>Service Times</Text>
           </View>
           <View style={styles.card}>
             {[
-              { day: 'Sunday', time: 'School: 8am-9am | Service: 9am-11am', icon: '☀️' },
-              { day: 'Tuesday', time: 'Prayer Hour: 6pm-7pm', icon: '🙏' },
-              { day: 'Thursday', time: 'Bible Study: 6pm-7pm', icon: '📖' },
-              { day: 'Last Friday', time: 'Monthly Vigil: 11pm-4am', icon: '🌙' },
-            ].map((service, index) => (
-              <View key={index} style={styles.serviceRow}>
-                <View style={styles.serviceIcon}>
-                  <Text style={styles.serviceIconText}>{service.icon}</Text>
+              { day: 'Sunday', time: 'School: 8am-9am | Service: 9am-11am', iconName: 'wb-sunny' as const, iconLib: 'MaterialIcons' as const },
+              { day: 'Tuesday', time: 'Prayer Hour: 6pm-7pm', iconName: 'hand-palms-up' as const, iconLib: 'MaterialCommunityIcons' as const },
+              { day: 'Thursday', time: 'Bible Study: 6pm-7pm', iconName: 'book-open' as const, iconLib: 'MaterialCommunityIcons' as const },
+              { day: 'Last Friday', time: 'Monthly Vigil: 11pm-4am', iconName: 'nights-stay' as const, iconLib: 'MaterialIcons' as const },
+            ].map((service, index) => {
+              const IconComponent = service.iconLib === 'MaterialIcons' ? MaterialIcons : MaterialCommunityIcons;
+              return (
+                <View key={index} style={styles.serviceRow}>
+                  <View style={styles.serviceIcon}>
+                    <IconComponent name={service.iconName as any} size={24} color="#fff" />
+                  </View>
+                  <View style={styles.serviceInfo}>
+                    <Text style={styles.serviceDay}>{service.day}</Text>
+                    <Text style={styles.serviceTime}>{service.time}</Text>
+                  </View>
                 </View>
-                <View style={styles.serviceInfo}>
-                  <Text style={styles.serviceDay}>{service.day}</Text>
-                  <Text style={styles.serviceTime}>{service.time}</Text>
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
 
@@ -164,7 +172,7 @@ export default function HomeScreenRedesign({ navigation }: any) {
         {upcomingEvents.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionIcon}>📅</Text>
+              <MaterialIcons name="event" size={24} color="#EC4899" />
               <Text style={styles.sectionTitle}>Upcoming Events</Text>
               <TouchableOpacity onPress={() => navigation.navigate('Events')}>
                 <Text style={styles.seeAll}>See All</Text>
@@ -191,7 +199,7 @@ export default function HomeScreenRedesign({ navigation }: any) {
                           {event.title}
                         </Text>
                         <View style={styles.eventDate}>
-                          <Text style={styles.eventDateIcon}>📅</Text>
+                          <MaterialIcons name="event" size={16} color="#fff" />
                           <Text style={styles.eventDateText}>
                             {new Date(event.date).toLocaleDateString()}
                           </Text>
@@ -202,7 +210,7 @@ export default function HomeScreenRedesign({ navigation }: any) {
                     <View style={styles.eventImagePlaceholder}>
                       <Text style={styles.eventTitle}>{event.title}</Text>
                       <View style={styles.eventDate}>
-                        <Text style={styles.eventDateIcon}>📅</Text>
+                        <MaterialIcons name="event" size={16} color={textColor} />
                         <Text style={[styles.eventDateText, { color: textColor }]}>
                           {new Date(event.date).toLocaleDateString()}
                         </Text>
@@ -219,7 +227,7 @@ export default function HomeScreenRedesign({ navigation }: any) {
         {recentSermons.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionIcon}>📖</Text>
+              <MaterialCommunityIcons name="book-open" size={24} color="#7C3AED" />
               <Text style={styles.sectionTitle}>Recent Sermons</Text>
               <TouchableOpacity onPress={() => navigation.navigate('Sermons')}>
                 <Text style={styles.seeAll}>See All</Text>
@@ -232,7 +240,7 @@ export default function HomeScreenRedesign({ navigation }: any) {
                 onPress={() => navigation.navigate('SermonDetails', { sermonId: sermon.id })}
               >
                 <View style={styles.sermonIcon}>
-                  <Text style={styles.sermonIconText}>🎤</Text>
+                  <MaterialIcons name="mic" size={28} color="#fff" />
                 </View>
                 <View style={styles.sermonInfo}>
                   <Text style={styles.sermonTitle} numberOfLines={2}>
@@ -242,7 +250,7 @@ export default function HomeScreenRedesign({ navigation }: any) {
                     {sermon.preacher} • {new Date(sermon.date).toLocaleDateString()}
                   </Text>
                 </View>
-                <Text style={styles.playIcon}>▶️</Text>
+                <MaterialIcons name="play-arrow" size={24} color="#667eea" />
               </TouchableOpacity>
             ))}
           </View>
@@ -318,9 +326,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  quickActionIcon: {
-    fontSize: 28,
-  },
   quickActionLabel: {
     fontSize: 12,
     color: colors.text,
@@ -337,6 +342,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   sectionIcon: {
     fontSize: 24,
+    fontFamily: 'System',
+    textAlignVertical: 'center',
   },
   sectionTitle: {
     fontSize: 20,
@@ -378,6 +385,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   serviceIconText: {
     fontSize: 20,
+    fontFamily: 'System',
+    textAlignVertical: 'center',
   },
   serviceInfo: {
     flex: 1,
@@ -427,9 +436,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  eventDateIcon: {
-    fontSize: 14,
-  },
+
   eventDateText: {
     fontSize: 12,
     color: '#fff',
@@ -455,9 +462,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-  },
-  sermonIconText: {
-    fontSize: 24,
   },
   sermonInfo: {
     flex: 1,

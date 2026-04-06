@@ -9,9 +9,11 @@ import {
   Animated,
   Vibration,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
 import { IncomingCall } from '../services/socket.service';
+import { ICON_SIZES } from '../utils/iconRenderer';
 
 interface IncomingCallModalProps {
   visible: boolean;
@@ -80,9 +82,11 @@ const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
               { transform: [{ scale: pulseAnim }] },
             ]}
           >
-            <Text style={styles.callIcon}>
-              {call.callType === 'video' ? '📹' : '📞'}
-            </Text>
+            <MaterialIcons
+              name={call.callType === 'video' ? 'videocam' : 'call'}
+              size={ICON_SIZES.massive}
+              color="#fff"
+            />
           </Animated.View>
 
           {/* Caller Info */}
@@ -116,7 +120,11 @@ const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
               activeOpacity={0.8}
             >
               <View style={styles.buttonIcon}>
-                <Text style={styles.buttonIconText}>✕</Text>
+                <MaterialIcons
+                  name="call-end"
+                  size={ICON_SIZES.xlarge}
+                  color="#fff"
+                />
               </View>
               <Text style={styles.buttonText}>Decline</Text>
             </TouchableOpacity>
@@ -128,7 +136,11 @@ const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
               activeOpacity={0.8}
             >
               <View style={styles.buttonIcon}>
-                <Text style={styles.buttonIconText}>✓</Text>
+                <MaterialIcons
+                  name="call"
+                  size={ICON_SIZES.xlarge}
+                  color="#fff"
+                />
               </View>
               <Text style={styles.buttonText}>Accept</Text>
             </TouchableOpacity>
@@ -161,9 +173,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  callIcon: {
-    fontSize: 40,
-  },
+
   callerInfo: {
     alignItems: 'center',
     marginBottom: 32,
@@ -228,11 +238,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  buttonIconText: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
+
   buttonText: {
     fontSize: 16,
     fontWeight: '600',

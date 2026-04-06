@@ -2,7 +2,7 @@
   "expo": {
     "name": "Household Of Covenant And Faith Apostolic Ministry",
     "slug": "household-of-covenant",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/New_Logo.png",
     "userInterfaceStyle": "dark",
@@ -27,7 +27,16 @@
         "RECORD_AUDIO",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "INTERNET"
+        "INTERNET",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "INTERNET",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
@@ -35,12 +44,29 @@
     },
     "scheme": "com.wordofcovenant.app",
     "plugins": [
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraBuildGradle": "configurations.all {\n    resolutionStrategy {\n        force 'com.google.android.material:material:1.11.0'\n    }\n}\n\nandroid {\n    defaultConfig {\n        minSdkVersion Integer.parseInt(System.getenv('MIN_SDK_VERSION') ?: '21')\n    }\n}"
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {
         "projectId": "60c37a03-9ab9-4b4d-aedc-9b759186e197"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 30000,
+      "url": "https://u.expo.dev/60c37a03-9ab9-4b4d-aedc-9b759186e197"
     }
   }
 }

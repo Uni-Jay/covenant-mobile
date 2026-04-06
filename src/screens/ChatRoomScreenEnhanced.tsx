@@ -35,6 +35,8 @@ import { useTheme } from '../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import socketService from '../services/socket.service';
 import { getServerUrl } from '../config/network.config';
+import { EMOJI, emojiTextProps } from '../utils/emojiRenderer';
+import { MaterialIcons } from '@expo/vector-icons';
 
 type RouteParams = {
   ChatRoom: {
@@ -56,7 +58,7 @@ interface Message {
   isOwn: boolean;
 }
 
-const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '🙏', '👍', '👎', '🔥'];
+const REACTION_EMOJIS = [EMOJI.love, EMOJI.laugh, EMOJI.surprised, EMOJI.sad, EMOJI.pray, EMOJI.thumbsUp, EMOJI.thumbsDown, EMOJI.fire];
 
 interface TypingUser {
   id: number;
@@ -1129,8 +1131,15 @@ const ChatRoomScreenEnhanced = () => {
                 <View style={styles.mediaTimeOverlay}>
                   <Text style={styles.mediaTimeText}>
                     {new Date(item.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                    {item.isOwn ? (item.isRead ? '  ✓✓' : '  ✓') : ''}
                   </Text>
+                  {item.isOwn && (
+                    <MaterialIcons
+                      name={item.isRead ? 'done-all' : 'done'}
+                      size={14}
+                      color="#fff"
+                      style={{ marginLeft: 4 }}
+                    />
+                  )}
                 </View>
               </TouchableOpacity>
             )}
@@ -1254,8 +1263,15 @@ const ChatRoomScreenEnhanced = () => {
                 <View style={styles.mediaTimeOverlay}>
                   <Text style={styles.mediaTimeText}>
                     {new Date(item.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                    {item.isOwn ? (item.isRead ? '  ✓✓' : '  ✓') : ''}
                   </Text>
+                  {item.isOwn && (
+                    <MaterialIcons
+                      name={item.isRead ? 'done-all' : 'done'}
+                      size={14}
+                      color="#fff"
+                      style={{ marginLeft: 4 }}
+                    />
+                  )}
                 </View>
               </TouchableOpacity>
             )}
@@ -1289,7 +1305,7 @@ const ChatRoomScreenEnhanced = () => {
                     handleAddReaction(emoji);
                   }}
                 >
-                  <Text style={styles.reactionEmoji}>{emoji}</Text>
+                  <Text style={styles.reactionEmoji} {...emojiTextProps}>{emoji}</Text>
                   <Text style={styles.reactionCount}>{users.length}</Text>
                 </TouchableOpacity>
               ))}
@@ -1682,7 +1698,12 @@ const ChatRoomScreenEnhanced = () => {
                     style={styles.reactionPickerBtn}
                     onPress={() => handleAddReaction(emoji)}
                   >
-                    <Text style={styles.reactionPickerEmoji}>{emoji}</Text>
+                    <Text 
+                      style={styles.reactionPickerEmoji}
+                      {...emojiTextProps}
+                    >
+                      {emoji}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -2617,7 +2638,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderColor: colors.border,
     elevation: 1,
   },
-  reactionEmoji: { fontSize: 14 },
+  reactionEmoji: { fontSize: 14, fontFamily: 'System', textAlignVertical: 'center' },
   reactionCount: { fontSize: 11, fontWeight: '700', color: colors.textSecondary },
 
   // ── Context menu ──
@@ -2658,7 +2679,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderBottomColor: colors.border,
   },
   reactionPickerBtn:   { padding: 6 },
-  reactionPickerEmoji: { fontSize: 28 },
+  reactionPickerEmoji: { fontSize: 28, fontFamily: 'System', textAlignVertical: 'center' },
 
   // ── Star badge ──
   starBadge: { fontSize: 11, marginRight: 2 },

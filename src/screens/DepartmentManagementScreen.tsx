@@ -13,6 +13,7 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -45,15 +46,15 @@ interface DepartmentPosition {
 }
 
 const DEPARTMENTS = [
-  { name: 'Church Leadership', icon: 'â›ª', color: '#8B4513' },
-  { name: 'Youth', icon: 'âš¡', color: '#6C5CE7' },
-  { name: 'Drama', icon: 'theater-outline', color: '#4ECDC4' },
-  { name: 'Covenant Men', icon: 'people-outline', color: '#2C3E50' },
-  { name: 'Prayer', icon: 'hand-left-outline', color: '#A29BFE' },
-  { name: 'Media', icon: 'videocam-outline', color: '#45B7D1' },
-  { name: 'Goodwomen', icon: 'heart-outline', color: '#E84393' },
-  { name: 'Choir', icon: 'musical-notes-outline', color: '#FF6B6B' },
-  { name: 'Welfare', icon: 'â¤ï¸', color: '#FD79A8' },
+  { name: 'Church Leadership', icon: 'church', color: '#8B4513' },
+  { name: 'Youth', icon: 'lightning-bolt', color: '#6C5CE7' },
+  { name: 'Drama', icon: 'theater-masks', color: '#4ECDC4' },
+  { name: 'Covenant Men', icon: 'account-multiple', color: '#2C3E50' },
+  { name: 'Prayer', icon: 'hands-pray', color: '#A29BFE' },
+  { name: 'Media', icon: 'video-camera', color: '#45B7D1' },
+  { name: 'Goodwomen', icon: 'heart', color: '#E84393' },
+  { name: 'Choir', icon: 'music', color: '#FF6B6B' },
+  { name: 'Welfare', icon: 'heart-handshake', color: '#FD79A8' },
 ];
 
 const DEPARTMENT_POSITIONS: { [key: string]: DepartmentPosition[] } = {
@@ -261,7 +262,7 @@ const DepartmentManagementScreen = ({ navigation }: any) => {
           colors={[dept.color, dept.color + '80']}
           style={styles.departmentGradient}
         >
-          <Text style={styles.departmentIcon}>{dept.icon}</Text>
+          <MaterialCommunityIcons name={dept.icon as any} size={40} color="#fff" />
           <Text style={styles.departmentName}>{dept.name}</Text>
           <Text style={styles.departmentCount}>
             {count} executive{count !== 1 ? 's' : ''}
@@ -352,11 +353,12 @@ const DepartmentManagementScreen = ({ navigation }: any) => {
           style={styles.backButton}
           onPress={() => setSelectedDepartment('')}
         >
-          <Text style={styles.backButtonText}>â† Back</Text>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {selectedDeptInfo?.icon} {selectedDepartment}
-        </Text>
+        <View style={styles.headerTitleContainer}>
+          {selectedDeptInfo && <MaterialCommunityIcons name={selectedDeptInfo.icon as any} size={28} color="#fff" />}
+          <Text style={styles.headerTitle}>{selectedDepartment}</Text>
+        </View>
         <Text style={styles.headerSubtitle}>Manage department executives</Text>
       </LinearGradient>
 
@@ -522,16 +524,16 @@ const createStyles = (colors: any) => StyleSheet.create({
   backButton: {
     marginBottom: 12,
   },
-  backButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: '600',
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 4,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: colors.white,
-    marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
@@ -560,10 +562,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   departmentGradient: {
     padding: 20,
     alignItems: 'center',
-  },
-  departmentIcon: {
-    fontSize: 40,
-    marginBottom: 8,
   },
   departmentName: {
     fontSize: 16,

@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { chatService } from '../services/api';
 import { getServerUrl } from '../config/network.config';
+import { MaterialIcons } from '@expo/vector-icons';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type RootStackParamList = {
@@ -203,7 +204,7 @@ const ChatListScreen = () => {
       {/* Search Bar */}
       <View style={styles.searchWrapper}>
         <View style={styles.searchBar}>
-          <Text style={styles.searchIconEmoji}>🔍</Text>
+          <MaterialIcons name="search" size={20} color="rgba(255,255,255,0.6)" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search"
@@ -213,7 +214,7 @@ const ChatListScreen = () => {
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Text style={styles.searchClear}>✕</Text>
+              <MaterialIcons name="close" size={20} color="rgba(255,255,255,0.75)" />
             </TouchableOpacity>
           )}
         </View>
@@ -241,7 +242,7 @@ const ChatListScreen = () => {
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>💬</Text>
+              <MaterialIcons name="chat-bubble" size={60} color={colors.textSecondary} style={{ marginBottom: 18 }} />
               <Text style={styles.emptyTitle}>
                 {searchQuery ? 'No results found' : 'No chats yet'}
               </Text>

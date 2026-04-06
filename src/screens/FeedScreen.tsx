@@ -26,6 +26,8 @@ import { feedService, api } from '../services';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { getServerUrl } from '../config/network.config';
+import { MaterialIcons } from '@expo/vector-icons';
+import { emojiTextProps } from '../utils/emojiRenderer';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -454,7 +456,7 @@ export default function FeedScreen() {
                     onPress={() => handleReact(post, r.key)}
                     activeOpacity={0.75}
                   >
-                    <Text style={styles.reactionOptionIcon}>{r.icon}</Text>
+                    <Text style={styles.reactionOptionIcon} {...emojiTextProps}>{r.icon}</Text>
                     <Text style={[styles.reactionOptionLabel, { color: r.color }]}>{r.label}</Text>
                   </TouchableOpacity>
                 ))}
@@ -472,7 +474,7 @@ export default function FeedScreen() {
             delayLongPress={300}
             activeOpacity={0.6}
           >
-            <Text style={[styles.actionBarIcon, post.user_liked && { color: myReaction?.color ?? '#1877F2' }]}>
+            <Text style={[styles.actionBarIcon, post.user_liked && { color: myReaction?.color ?? '#1877F2' }]} {...emojiTextProps}>
               {post.user_liked && myReaction ? myReaction.icon : '\uD83D\uDC4D'}
             </Text>
             <Text style={[styles.actionBarLabel, post.user_liked && { color: myReaction?.color ?? '#1877F2', fontWeight: '700' }]}>
@@ -487,7 +489,7 @@ export default function FeedScreen() {
             onPress={() => openComments(post)}
             activeOpacity={0.6}
           >
-            <Text style={styles.actionBarIcon}>{'\uD83D\uDCAC'}</Text>
+            <MaterialIcons name="comment" size={20} color="#1877F2" />
             <Text style={styles.actionBarLabel}>Comment</Text>
           </TouchableOpacity>
 
@@ -498,7 +500,7 @@ export default function FeedScreen() {
             onPress={() => handleSharePost(post)}
             activeOpacity={0.6}
           >
-            <Text style={styles.actionBarIcon}>{'↗️'}</Text>
+            <MaterialIcons name="share" size={20} color="#1877F2" />
             <Text style={styles.actionBarLabel}>Share</Text>
           </TouchableOpacity>
         </View>
@@ -1067,7 +1069,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1, borderColor: colors.border,
   },
   reactionOption: { alignItems: 'center', paddingHorizontal: 4, paddingVertical: 2 },
-  reactionOptionIcon: { fontSize: 32 },
+  reactionOptionIcon: { fontSize: 32, fontFamily: 'System', textAlignVertical: 'center' },
   reactionOptionLabel: { fontSize: 9, fontWeight: '700', marginTop: 2 },
 
   /* Action bar */
@@ -1077,7 +1079,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingVertical: 10, gap: 5, borderRadius: 6,
   },
   actionBarSep: { width: 1, backgroundColor: colors.border, alignSelf: 'center', height: 22 },
-  actionBarIcon: { fontSize: 18, color: colors.textSecondary },
+  actionBarIcon: { fontSize: 18, color: colors.textSecondary, fontFamily: 'System', textAlignVertical: 'center' },
   actionBarLabel: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
 
   /* Empty */
