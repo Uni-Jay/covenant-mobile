@@ -6,8 +6,8 @@
 const MODE = 'production'; // Change to 'development' for local testing
 
 const NETWORK_CONFIG = {
-  // Production (Railway)
-  PRODUCTION_URL: 'https://covenant-server-production.up.railway.app',
+  // Production (Render)
+  PRODUCTION_URL: 'https://covenant-server-1.onrender.com',
   
   // Local Development
   // For Android Emulator: Use 10.0.2.2 (maps to host's localhost)
