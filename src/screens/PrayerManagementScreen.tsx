@@ -46,7 +46,7 @@ export default function PrayerManagementScreen() {
     if (!user) return false;
     
     // Check role
-    if (user.role && ['super_admin', 'admin', 'media_head', 'media'].includes(user.role)) {
+    if (user.role && ['admin', 'media', 'media_head'].includes(user.role)) {
       return true;
     }
     

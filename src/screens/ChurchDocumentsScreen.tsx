@@ -69,7 +69,7 @@ const ChurchDocumentsScreen = () => {
     if (!user) return false;
     
     // Check role
-    if (user.role && ['super_admin', 'admin', 'media_head', 'media'].includes(user.role)) {
+    if (user.role && ['admin', 'media', 'media_head'].includes(user.role)) {
       return true;
     }
     
@@ -86,7 +86,7 @@ const ChurchDocumentsScreen = () => {
   }, [user]);
 
   const isExecutive = user?.role && [
-    'super_admin', 'admin', 'pastor', 'elder', 'secretary', 
+    'admin', 'media', 'pastor', 'elder', 'secretary', 
     'media_head', 'media', 'department_head', 'finance', 'deacon'
   ].includes(user.role);
 

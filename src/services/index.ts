@@ -6,7 +6,10 @@ import api, {
   firstTimerService,
   dashboardService,
   notificationService,
-  attendanceService
+  attendanceService,
+  calendarService,
+  userManagementService,
+  departmentService
 } from './api';
 import { AuthResponse, LoginCredentials, RegisterData, User } from '../types';
 import { googleAuthService } from './googleAuth.service';
@@ -227,5 +230,8 @@ export {
   firstTimerService,
   dashboardService,
   notificationService,
-  attendanceService
+  attendanceService,
+  calendarService,
+  userManagementService,
+  departmentService
 };

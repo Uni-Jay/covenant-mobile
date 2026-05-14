@@ -17,19 +17,29 @@ export interface User {
 }
 
 export type UserRole = 
-  | 'member' 
-  | 'pastor' 
-  | 'elder' 
-  | 'deacon' 
-  | 'secretary' 
-  | 'media' 
-  | 'finance' 
-  | 'choir' 
-  | 'department_head'
-  | 'admin'
-  | 'church_admin'
-  | 'media_head' 
-  | 'super_admin';
+  | 'member'                        // Default - regular church member (no special access)
+  | 'admin'                         // System administrator (full system control)
+  | 'gen_overseer'                  // General Overseer (highest church authority)
+  | 'senior_pastor'                 // Senior Pastor
+  | 'pastor'                        // Pastor (senior leadership)
+  | 'church_committee_chairman'     // Church committee chairman
+  | 'church_committee_secretary'    // Church committee secretary
+  | 'secretary'                     // Secretary (general)
+  | 'treasurer'                     // Treasurer (financial authority)
+  | 'pro'                           // Public Relation Officer (propagandist/communications)
+  | 'media'                         // Media officer (media department authority)
+  | 'coordinator'                   // Department coordinator (department-scoped)
+  | 'assistant_coordinator'         // Assistant coordinator (department-scoped);
+
+export type DepartmentValue = 
+  | 'media'                         // Media department
+  | 'choir'                         // Choir department
+  | 'ushers'                        // Ushers department
+  | 'drama'                         // Drama department
+  | 'covenant_men'                  // Covenant Men fellowship
+  | 'covenant_women'                // Covenant Women fellowship
+  | 'covenant_youth'                // Covenant Youth fellowship
+  | 'covenant_children';            // Covenant Children fellowship
 
 export interface AuthResponse {
   token: string;

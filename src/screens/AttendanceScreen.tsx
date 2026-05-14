@@ -266,7 +266,7 @@ const AttendanceScreen = ({ navigation }: any) => {
       </View>
 
       {/* Admin Actions */}
-      {(user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'pastor') && (
+      {(user?.role === 'admin' || user?.role === 'media' || user?.role === 'pastor') && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Admin Actions</Text>
           <TouchableOpacity

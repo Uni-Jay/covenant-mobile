@@ -237,7 +237,7 @@ export default function HomeScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        {user?.role && ['super_admin', 'admin', 'pastor', 'elder', 'secretary', 'media_head', 'media', 'department_head', 'finance', 'deacon'].includes(user.role) && (
+        {user?.role && ['admin', 'media', 'pastor', 'elder', 'secretary', 'media_head', 'department_head', 'finance', 'deacon'].includes(user.role) && (
           <TouchableOpacity
             style={styles.actionCard}
             onPress={() => navigation.navigate('ChurchDocuments')}

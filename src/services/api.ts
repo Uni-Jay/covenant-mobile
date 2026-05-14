@@ -385,4 +385,186 @@ export const attendanceService = {
   },
 };
 
+// Calendar service
+export const calendarService = {
+  // Member calendar endpoints
+  getCalendar: async () => {
+    const response = await api.get('/api/calendar/calendar');
+    return response.data;
+  },
+  getEvents: async () => {
+    const response = await api.get('/api/calendar/events');
+    return response.data;
+  },
+  getEventById: async (eventId: number) => {
+    const response = await api.get(`/api/calendar/events/${eventId}`);
+    return response.data;
+  },
+  getBirthdaySettings: async () => {
+    const response = await api.get('/api/calendar/birthday-settings');
+    return response.data;
+  },
+  updateBirthdaySettings: async (hidebirthday: boolean) => {
+    const response = await api.put('/api/calendar/birthday-settings', { hidebirthday });
+    return response.data;
+  },
+  
+  // Admin calendar endpoints
+  setupCalendar: async () => {
+    const response = await api.post('/api/calendar/admin/setup-calendar');
+    return response.data;
+  },
+  createEvent: async (eventData: {
+    title: string;
+    description?: string;
+    event_date: string;
+    event_type: 'activity' | 'birthday' | 'service' | 'meeting' | 'anniversary';
+    notes?: string;
+  }) => {
+    const response = await api.post('/api/calendar/admin/events', eventData);
+    return response.data;
+  },
+  updateEvent: async (eventId: number, eventData: any) => {
+    const response = await api.put(`/api/calendar/admin/events/${eventId}`, eventData);
+    return response.data;
+  },
+  deleteEvent: async (eventId: number) => {
+    const response = await api.delete(`/api/calendar/admin/events/${eventId}`);
+    return response.data;
+  },
+  getAllEvents: async (page: number = 1, limit: number = 50) => {
+    const response = await api.get(`/api/calendar/admin/events?page=${page}&limit=${limit}`);
+    return response.data;
+  },
+  triggerEventReminders: async () => {
+    const response = await api.post('/api/calendar/admin/trigger-event-reminders');
+    return response.data;
+  },
+  triggerBirthdayReminders: async () => {
+    const response = await api.post('/api/calendar/admin/trigger-birthdays');
+    return response.data;
+  },
+  getReminderLogs: async (page: number = 1, limit: number = 50) => {
+    const response = await api.get(`/api/calendar/admin/reminder-logs?page=${page}&limit=${limit}`);
+    return response.data;
+  },
+  getCalendarStats: async () => {
+    const response = await api.get('/api/calendar/admin/calendar-stats');
+    return response.data;
+  },
+};
+
+// User management service (for admin)
+export const userManagementService = {
+  getAllUsers: async (page: number = 1, limit: number = 50) => {
+    const response = await api.get(`/api/user-management/users?page=${page}&limit=${limit}`);
+    return response.data;
+  },
+  assignRole: async (userId: number, role: string) => {
+    const response = await api.post(`/api/user-management/assign-role`, { userId, role });
+    return response.data;
+  },
+  removeRole: async (userId: number, role: string) => {
+    const response = await api.post(`/api/user-management/remove-role`, { userId, role });
+    return response.data;
+  },
+  assignDepartment: async (userId: number, departmentId: number, role: string) => {
+    const response = await api.post(`/api/user-management/assign-department`, { userId, departmentId, role });
+    return response.data;
+  },
+  removeDepartment: async (userId: number, departmentId: number) => {
+    const response = await api.post(`/api/user-management/remove-department`, { userId, departmentId });
+    return response.data;
+  },
+  suspendUser: async (userId: number, reason?: string) => {
+    const response = await api.post(`/api/user-management/suspend`, { userId, reason });
+    return response.data;
+  },
+  restoreUser: async (userId: number) => {
+    const response = await api.post(`/api/user-management/restore`, { userId });
+    return response.data;
+  },
+  getUserAccessInfo: async (userId: number) => {
+    const response = await api.get(`/api/user-management/user-access/${userId}`);
+    return response.data;
+  },
+};
+
+// Department service
+export const departmentService = {
+  // Get all departments
+  getAllDepartments: async () => {
+    const response = await api.get('/departments');
+    return response.data;
+  },
+
+  // Get department with members and details
+  getDepartmentDetails: async (department: string) => {
+    const response = await api.get(`/departments/${encodeURIComponent(department)}/details`);
+    return response.data;
+  },
+
+  // Get department members
+  getDepartmentMembers: async (department: string, page: number = 1, limit: number = 50) => {
+    const response = await api.get(`/departments/${encodeURIComponent(department)}/members?page=${page}&limit=${limit}`);
+    return response.data;
+  },
+
+  // Get executives in a department
+  getDepartmentExecutives: async (department?: string) => {
+    const response = await api.get('/departments/executives', {
+      params: department ? { department } : {},
+    });
+    return response.data;
+  },
+
+  // Get all church leaders
+  getChurchLeaders: async () => {
+    const response = await api.get('/departments/leaders');
+    return response.data;
+  },
+
+  // Join a department
+  joinDepartment: async (department: string, role: string = 'member') => {
+    const response = await api.post(`/departments/${encodeURIComponent(department)}/join`, { role });
+    return response.data;
+  },
+
+  // Leave a department
+  leaveDepartment: async (department: string) => {
+    const response = await api.post(`/departments/${encodeURIComponent(department)}/leave`);
+    return response.data;
+  },
+
+  // Get user's departments
+  getUserDepartments: async () => {
+    const response = await api.get('/departments/user/my-departments');
+    return response.data;
+  },
+
+  // Get user's department roles
+  getUserDepartmentRoles: async () => {
+    const response = await api.get('/departments/user/roles');
+    return response.data;
+  },
+
+  // Update department role (for admins)
+  updateMemberRole: async (department: string, userId: number, role: string) => {
+    const response = await api.post(`/departments/${encodeURIComponent(department)}/update-role`, { userId, role });
+    return response.data;
+  },
+
+  // Remove member from department (for admins)
+  removeDepartmentMember: async (department: string, userId: number) => {
+    const response = await api.post(`/departments/${encodeURIComponent(department)}/remove-member`, { userId });
+    return response.data;
+  },
+
+  // Get department statistics
+  getDepartmentStats: async () => {
+    const response = await api.get('/departments/stats');
+    return response.data;
+  },
+};
+
 export default api;
