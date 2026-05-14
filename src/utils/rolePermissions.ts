@@ -4,7 +4,8 @@ const ROLE_ALIASES: Record<string, string> = {
   head_media: 'media',
   media_head: 'media',
   head_admin: 'admin',
-  church_admin: 'admin'
+  church_admin: 'admin',
+  super_admin: 'admin'
 };
 
 /**
@@ -37,7 +38,7 @@ export const hasAdminAccess = (role?: string): boolean => {
  */
 export const hasLeadershipAccess = (role?: string): boolean => {
   const normalized = normalizeRole(role);
-  return ['admin', 'gen_overseer', 'senior_pastor', 'pastor', 'church_committee_chairman', 'church_committee_secretary'].includes(normalized);
+  return ['admin', 'super_admin', 'gen_overseer', 'senior_pastor', 'pastor', 'church_committee_chairman', 'church_committee_secretary'].includes(normalized);
 };
 
 /**
@@ -45,7 +46,7 @@ export const hasLeadershipAccess = (role?: string): boolean => {
  */
 export const hasMediaAccess = (role?: string): boolean => {
   const normalized = normalizeRole(role);
-  return ['admin', 'gen_overseer', 'senior_pastor', 'pastor', 'media'].includes(normalized);
+  return ['admin', 'super_admin', 'gen_overseer', 'senior_pastor', 'pastor', 'media'].includes(normalized);
 };
 
 /**
@@ -53,7 +54,7 @@ export const hasMediaAccess = (role?: string): boolean => {
  */
 export const canModerateContent = (role?: string): boolean => {
   const normalized = normalizeRole(role);
-  return ['admin', 'gen_overseer', 'senior_pastor', 'pastor', 'media', 'pro', 'coordinator'].includes(normalized);
+  return ['admin', 'super_admin', 'gen_overseer', 'senior_pastor', 'pastor', 'media', 'pro', 'coordinator'].includes(normalized);
 };
 
 /**
@@ -69,8 +70,13 @@ export const isCoordinator = (role?: string): boolean => {
  */
 export const isExecutive = (role?: string): boolean => {
   const normalized = normalizeRole(role);
-  return ['admin', 'gen_overseer', 'senior_pastor', 'pastor', 'church_committee_chairman', 'church_committee_secretary', 'secretary', 'treasurer', 'pro', 'media', 'coordinator'].includes(normalized);
+  return ['admin', 'super_admin', 'gen_overseer', 'senior_pastor', 'pastor', 'church_committee_chairman', 'church_committee_secretary', 'secretary', 'treasurer', 'pro', 'media', 'coordinator'].includes(normalized);
 };
+
+/**
+ * Alias for isExecutive for consistency with other permission checks
+ */
+export const hasExecutiveAccess = (role?: string): boolean => isExecutive(role);
 
 /**
  * Department helper functions
@@ -106,3 +112,9 @@ export const hasDramaDepartment = (departments: DepartmentValue[] | undefined): 
 
 export const hasUshersDepartment = (departments: DepartmentValue[] | undefined): boolean =>
   hasDepartment(departments, 'ushers');
+
+export const hasPrayerDepartment = (departments: DepartmentValue[] | undefined): boolean =>
+  hasDepartment(departments, 'prayer');
+
+export const hasMediaOrPrayerDepartment = (departments: DepartmentValue[] | undefined): boolean =>
+  hasMediaDepartment(departments) || hasPrayerDepartment(departments);
